@@ -8,7 +8,20 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
 };
 
+export function isFirebaseClientConfigured() {
+  return Boolean(
+    firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId &&
+      firebaseConfig.storageBucket,
+  );
+}
+
 export function getFirebaseApp() {
+  if (!isFirebaseClientConfigured()) {
+    throw new Error("Firebase client configuration is missing");
+  }
+
   return getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 }
 

@@ -2,14 +2,27 @@
 
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { getClientAuth, getGoogleProvider } from "@/lib/firebase-client";
 
 export function LoginPanel() {
+  const { configured } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  if (!configured) {
+    return (
+      <div className="w-full max-w-md rounded-lg border border-line bg-white p-5 shadow-panel">
+        <h2 className="text-lg font-black">Firebase設定が必要です</h2>
+        <p className="mt-2 text-sm leading-6 text-stone-700">
+          `.env` に `NEXT_PUBLIC_FIREBASE_API_KEY` などのFirebase Webアプリ設定を入れて、Next.jsを再起動してください。
+        </p>
+      </div>
+    );
+  }
 
   async function submit() {
     setBusy(true);
