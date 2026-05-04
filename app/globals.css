@@ -1,0 +1,65 @@
+@import "highlight.js/styles/github-dark.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f5ef;
+  color: #161616;
+}
+
+.slide-content h1 {
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 1.02;
+  font-weight: 800;
+  margin: 0 0 1.2rem;
+}
+
+.slide-content h2 {
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  line-height: 1.1;
+  font-weight: 750;
+  margin: 0 0 1rem;
+}
+
+.slide-content p,
+.slide-content li {
+  font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+  line-height: 1.55;
+}
+
+.slide-content ul,
+.slide-content ol {
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.slide-content pre {
+  border-radius: 8px;
+  overflow: auto;
+  padding: 1rem;
+  background: #111827;
+  font-size: clamp(0.78rem, 1.1vw, 1rem);
+  line-height: 1.55;
+}
+
+.slide-content code:not(pre code) {
+  background: #ece7dc;
+  border-radius: 4px;
+  padding: 0.1rem 0.28rem;
+}
+
+.slide-content a {
+  color: #2f7d6d;
+  text-decoration: underline;
+}

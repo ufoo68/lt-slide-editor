@@ -1,0 +1,43 @@
+{
+  "name": "lt-slide-editor",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.14.0",
+    "@prisma/client": "^5.22.0",
+    "firebase": "^10.14.1",
+    "firebase-admin": "^12.7.0",
+    "highlight.js": "^11.10.0",
+    "markdown-it": "^14.1.0",
+    "next": "14.2.17",
+    "prisma": "^5.22.0",
+    "sanitize-html": "^2.13.1",
+    "slugify": "^1.6.6",
+    "tailwind-merge": "^2.5.4",
+    "typescript": "^5.6.3",
+    "zod": "^3.23.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.8.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/sanitize-html": "^2.13.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.17",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14"
+  }
+}
