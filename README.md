@@ -24,24 +24,26 @@ npm install
 
 Node.jsは24系LTSを想定しています。Voltaを使う場合は `package.json` の設定でNode 24.15.0が選ばれます。
 
-2. `.env.example` を元に `.env` を作成します。
+2. `.env.example` を元に `.env` を作成します。ローカル開発ではFirebase Auth Emulatorを使うため、実Firebaseプロジェクトのサービスアカウント鍵は不要です。既に本番/ステージング向けの `.env` がある場合は、`.env.local.example` を元に `.env.local` を作るとローカル用の値で上書きできます。
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/lt_slide_editor?schema=public"
-NEXT_PUBLIC_FIREBASE_API_KEY="..."
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="..."
-NEXT_PUBLIC_FIREBASE_PROJECT_ID="..."
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="..."
-FIREBASE_PROJECT_ID="..."
-FIREBASE_CLIENT_EMAIL="..."
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+NEXT_PUBLIC_FIREBASE_API_KEY="demo-api-key"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="localhost"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="demo-lt-slide-editor"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="demo-lt-slide-editor.appspot.com"
+NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST="localhost:9099"
+FIREBASE_PROJECT_ID="demo-lt-slide-editor"
+FIREBASE_AUTH_EMULATOR_HOST="localhost:9099"
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 GCS_BUCKET_NAME=""
 ```
 
-3. ローカルPostgreSQLを起動し、Prisma migrationを適用します。
+3. Docker ComposeでローカルPostgreSQLとFirebase Auth Emulatorを起動し、Prisma migrationを適用します。
 
 ```bash
-npm run db:up
+npm run local:up
 npm run db:migrate
 ```
 
@@ -61,12 +63,12 @@ npm run check
 
 `npm run build` はCloud Run向けのstandalone出力を確認したい時、またはデプロイ前に実行します。
 
-## ローカルDB
+## ローカルDocker
 
-DockerでPostgreSQL 16を起動します。Windowsでは `package.json` のnpm scriptsから `scripts/local-db.ps1` を実行します。コンテナ名は `lt-slide-editor-postgres`、DB名は `lt_slide_editor`、ユーザーとパスワードはどちらも `postgres` です。
+Docker ComposeでPostgreSQL 16とFirebase Auth Emulatorを起動します。DB名は `lt_slide_editor`、ユーザーとパスワードはどちらも `postgres` です。
 
 ```bash
-npm run db:up
+npm run local:up
 npm run db:status
 npm run db:migrate
 ```
@@ -74,20 +76,43 @@ npm run db:migrate
 よく使うコマンド:
 
 ```bash
-npm run db:up       # 起動
-npm run db:down     # 停止
-npm run db:restart  # 再起動
-npm run db:logs     # ログ表示
-npm run db:status   # 状態とDATABASE_URL表示
-npm run db:reset    # コンテナ削除後に作り直し
-npm run db:studio   # Prisma Studio
+npm run local:up     # PostgreSQLとFirebase Auth Emulatorを起動
+npm run local:down   # Compose環境を停止・削除
+npm run local:logs   # PostgreSQLとFirebase Auth Emulatorのログ表示
+npm run local:reset  # Compose volumeごと削除して作り直し
+npm run db:up        # PostgreSQLだけ起動
+npm run db:down      # PostgreSQLだけ停止
+npm run db:restart   # PostgreSQLだけ再起動
+npm run db:logs      # PostgreSQLだけログ表示
+npm run db:status    # PostgreSQLの状態表示
+npm run db:studio    # Prisma Studio
 ```
 
-`db:reset` はローカルDBのデータを削除します。必要なデッキがある場合は先に退避してください。
+`local:reset` と `db:reset` はローカルDBのデータを削除します。必要なデッキがある場合は先に退避してください。
+
+## ローカルFirebase Auth
+
+ローカル開発ではDocker ComposeでFirebase Auth Emulatorを起動します。実Firebase Authenticationには接続しません。
+
+```bash
+npm run local:up
+npm run local:logs
+npm run local:down
+```
+
+Auth Emulator UIは `http://localhost:4000`、Auth APIは `http://localhost:9099` です。`.env` に `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` と `FIREBASE_AUTH_EMULATOR_HOST` がある場合、ブラウザ側Firebase SDKとサーバー側Firebase Admin SDKの両方がエミュレータへ接続します。
+
+ローカルではメール/パスワードの新規登録とログインを使ってください。Googleログインは実Firebaseプロジェクト側のOAuth設定に依存するため、ローカル用の標準フローからは外しています。
+
+PostgreSQLとAuth Emulatorのデータをまとめて消して作り直す場合は次を実行します。
+
+```bash
+npm run local:reset
+```
 
 ## Firebase設定
 
-Firebase ConsoleでWebアプリを作成し、Authenticationのメール/パスワードとGoogleログインを有効化します。クライアント設定を `NEXT_PUBLIC_FIREBASE_*` に入れ、サーバー側のID token検証用にサービスアカウントの `project_id`、`client_email`、`private_key` を `FIREBASE_*` に設定します。
+本番やステージングではFirebase ConsoleでWebアプリを作成し、Authenticationのメール/パスワードとGoogleログインを有効化します。クライアント設定を `NEXT_PUBLIC_FIREBASE_*` に入れ、サーバー側のID token検証用にサービスアカウントの `project_id`、`client_email`、`private_key` を `FIREBASE_*` に設定します。本番環境では `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` と `FIREBASE_AUTH_EMULATOR_HOST` を設定しないでください。
 
 ## Cloud SQL for PostgreSQL
 

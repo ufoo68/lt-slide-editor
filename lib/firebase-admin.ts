@@ -6,15 +6,23 @@ function privateKey() {
 }
 
 export function getAdminAuth() {
-  const app =
-    getApps()[0] ??
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey(),
-      }),
-    });
+  const app = getApps()[0] ?? initializeAdminApp();
 
   return getAuth(app);
+}
+
+function initializeAdminApp() {
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    return initializeApp({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  }
+
+  return initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey(),
+    }),
+  });
 }
