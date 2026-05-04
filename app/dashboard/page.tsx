@@ -21,11 +21,21 @@ type SharedSlideSummary = {
   updatedAt: string;
 };
 
+type ImageSummary = {
+  id: string;
+  filename: string;
+  markdown: string;
+  size: number;
+  updatedAt: string;
+  url: string;
+};
+
 export default function DashboardPage() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"decks" | "shared">("decks");
+  const [activeTab, setActiveTab] = useState<"decks" | "images" | "shared">("decks");
   const [decks, setDecks] = useState<DeckSummary[]>([]);
+  const [images, setImages] = useState<ImageSummary[]>([]);
   const [sharedSlides, setSharedSlides] = useState<SharedSlideSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,21 +51,26 @@ export default function DashboardPage() {
       if (!user) return;
       const idToken = await token();
       setError(null);
-      const [deckResponse, sharedSlideResponse] = await Promise.all([
+      const [deckResponse, imageResponse, sharedSlideResponse] = await Promise.all([
         fetch("/api/decks", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        }),
+        fetch("/api/images", {
           headers: { Authorization: `Bearer ${idToken}` },
         }),
         fetch("/api/slide-library", {
           headers: { Authorization: `Bearer ${idToken}` },
         }),
       ]);
-      if (!deckResponse.ok || !sharedSlideResponse.ok) {
+      if (!deckResponse.ok || !imageResponse.ok || !sharedSlideResponse.ok) {
         setError("一覧を読み込めませんでした");
         return;
       }
       const deckData = (await deckResponse.json()) as { decks: DeckSummary[] };
+      const imageData = (await imageResponse.json()) as { images: ImageSummary[] };
       const sharedSlideData = (await sharedSlideResponse.json()) as { slides: SharedSlideSummary[] };
       setDecks(deckData.decks);
+      setImages(imageData.images);
       setSharedSlides(sharedSlideData.slides);
     }
     load();
@@ -101,6 +116,51 @@ export default function DashboardPage() {
     }
   }
 
+  async function uploadImage(file: File | null) {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const idToken = await token();
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await fetch("/api/images", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("画像をアップロードできませんでした");
+      }
+      const data = (await response.json()) as { image: ImageSummary };
+      setImages((currentImages) => [data.image, ...currentImages]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "画像をアップロードできませんでした");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteImage(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const idToken = await token();
+      const response = await fetch(`/api/images/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!response.ok) {
+        throw new Error("画像を削除できませんでした");
+      }
+      setImages((currentImages) => currentImages.filter((image) => image.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "画像を削除できませんでした");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading || !user) {
     return <main className="p-6">Loading...</main>;
   }
@@ -119,6 +179,17 @@ export default function DashboardPage() {
             <Link className="rounded-md border border-line bg-white px-4 py-3 font-semibold" href="/slides/new">
               共有スライド作成
             </Link>
+            ) : activeTab === "images" ? (
+              <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-3 font-semibold text-white">
+                画像アップロード
+                <input
+                  accept="image/*"
+                  className="sr-only"
+                  disabled={busy}
+                  onChange={(event) => uploadImage(event.target.files?.[0] ?? null)}
+                  type="file"
+                />
+              </label>
             ) : (
             <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/decks/new">
               新規作成
@@ -133,6 +204,13 @@ export default function DashboardPage() {
             type="button"
           >
             発表用スライド
+          </button>
+          <button
+            className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "images" ? "bg-ink text-white" : ""}`}
+            onClick={() => setActiveTab("images")}
+            type="button"
+          >
+            画像
           </button>
           <button
             className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "shared" ? "bg-ink text-white" : ""}`}
@@ -184,6 +262,44 @@ export default function DashboardPage() {
             <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/decks/new">
               最初のデッキを作成
             </Link>
+          </div>
+        ) : null}
+        {activeTab === "images" && images.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {images.map((image) => (
+              <article className="rounded-lg border border-line bg-white p-4 shadow-panel" key={image.id}>
+                <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img alt={image.filename} className="h-full w-full object-contain" src={image.url} />
+                </div>
+                <h2 className="mt-3 truncate text-base font-black">{image.filename}</h2>
+                <p className="mt-1 text-sm text-stone-600">{Math.ceil(image.size / 1024)} KB</p>
+                <code className="mt-3 block truncate rounded-md bg-stone-100 p-2 text-xs">{image.markdown}</code>
+                <button
+                  className="mt-3 rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => deleteImage(image.id)}
+                  type="button"
+                >
+                  削除
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        {activeTab === "images" && !images.length ? (
+          <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
+            <p className="mb-4 font-semibold text-stone-700">画像はまだありません。</p>
+            <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-3 font-semibold text-white">
+              最初の画像をアップロード
+              <input
+                accept="image/*"
+                className="sr-only"
+                disabled={busy}
+                onChange={(event) => uploadImage(event.target.files?.[0] ?? null)}
+                type="file"
+              />
+            </label>
           </div>
         ) : null}
         {activeTab === "shared" && sharedSlides.length ? (

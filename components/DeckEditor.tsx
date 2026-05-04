@@ -24,6 +24,15 @@ type LibrarySlide = {
   updatedAt: string;
 };
 
+type ImageLibraryItem = {
+  id: string;
+  filename: string;
+  markdown: string;
+  size: number;
+  updatedAt: string;
+  url: string;
+};
+
 export function DeckEditor() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -36,6 +45,10 @@ export function DeckEditor() {
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
+  const [images, setImages] = useState<ImageLibraryItem[]>([]);
   const [librarySlides, setLibrarySlides] = useState<LibrarySlide[]>([]);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -93,6 +106,25 @@ export function DeckEditor() {
     loadLibrary();
   }, [libraryLoaded, libraryOpen, token, user]);
 
+  useEffect(() => {
+    async function loadImages() {
+      if (!user || !imageOpen || imageLoaded) return;
+      setImageError(null);
+      const idToken = await token();
+      const response = await fetch("/api/images", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!response.ok) {
+        setImageError("画像ライブラリを読み込めませんでした");
+        return;
+      }
+      const data = (await response.json()) as { images: ImageLibraryItem[] };
+      setImages(data.images);
+      setImageLoaded(true);
+    }
+    loadImages();
+  }, [imageLoaded, imageOpen, token, user]);
+
   async function copyLibrarySlide(slide: LibrarySlide) {
     setLibraryError(null);
     try {
@@ -100,6 +132,16 @@ export function DeckEditor() {
       setStatus(`「${slide.title}」のMarkdownをコピーしました`);
     } catch {
       setLibraryError("クリップボードにコピーできませんでした");
+    }
+  }
+
+  async function copyImageMarkdown(image: ImageLibraryItem) {
+    setImageError(null);
+    try {
+      await navigator.clipboard.writeText(image.markdown);
+      setStatus(`「${image.filename}」のMarkdownをコピーしました`);
+    } catch {
+      setImageError("クリップボードにコピーできませんでした");
     }
   }
 
@@ -196,6 +238,13 @@ export function DeckEditor() {
             </label>
             <button className="h-10 rounded-md bg-mint px-4 font-semibold text-white" onClick={save} type="button">
               保存
+            </button>
+            <button
+              className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
+              onClick={() => setImageOpen(true)}
+              type="button"
+            >
+              画像
             </button>
             <button
               className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
@@ -335,6 +384,52 @@ export function DeckEditor() {
               ) : (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
                   <p className="text-sm text-stone-600">共有スライドはまだありません。</p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : null}
+      {imageOpen ? (
+        <div className="fixed inset-0 z-40">
+          <button
+            aria-label="画像ライブラリを閉じる"
+            className="absolute inset-0 bg-black/20"
+            onClick={() => setImageOpen(false)}
+            type="button"
+          />
+          <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-black">画像</h2>
+              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setImageOpen(false)} type="button">
+                閉じる
+              </button>
+            </div>
+            <Link className="rounded-md bg-ink px-4 py-3 text-center text-sm font-semibold text-white" href="/dashboard">
+              画像ライブラリを開く
+            </Link>
+            {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
+            <div className="grid gap-2">
+              {images.length ? (
+                images.map((image) => (
+                  <article className="rounded-md border border-line bg-white p-3" key={image.id}>
+                    <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img alt={image.filename} className="h-full w-full object-contain" src={image.url} />
+                    </div>
+                    <h3 className="mt-3 truncate text-sm font-black">{image.filename}</h3>
+                    <button
+                      className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
+                      onClick={() => copyImageMarkdown(image)}
+                      type="button"
+                    >
+                      Markdownをコピー
+                    </button>
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-md border border-dashed border-line bg-white p-4">
+                  <p className="text-sm text-stone-600">画像はまだありません。</p>
                 </div>
               )}
             </div>

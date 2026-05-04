@@ -7,6 +7,7 @@ Cloud Run + Cloud SQL for PostgreSQLにデプロイする手順です。
 - Google Cloud CLI (`gcloud`) が使えること
 - Firebase AuthenticationのWebアプリ設定があること
 - Cloud SQL for PostgreSQLのインスタンス、DB、ユーザーがあること
+- Cloud Storageの画像保存用バケットがあること
 - Artifact RegistryのDockerリポジトリがあること
 
 ## 変数例
@@ -18,6 +19,7 @@ $SERVICE = "lt-slide-editor"
 $REPOSITORY = "apps"
 $IMAGE = "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:latest"
 $CLOUD_SQL_INSTANCE = "$PROJECT_ID:$REGION:lt-slide-editor-db"
+$GCS_BUCKET_NAME = "lt-slide-editor-images"
 ```
 
 Cloud SQL Unix socket用の `DATABASE_URL` は次の形です。
@@ -64,7 +66,8 @@ gcloud run deploy $SERVICE `
   --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID=$PROJECT_ID `
   --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=PROJECT_ID.appspot.com `
   --set-env-vars FIREBASE_PROJECT_ID=$PROJECT_ID `
-  --set-env-vars GCS_BUCKET_NAME= `
+  --set-env-vars STORAGE_BACKEND=gcs `
+  --set-env-vars GCS_BUCKET_NAME=$GCS_BUCKET_NAME `
   --set-secrets DATABASE_URL=DATABASE_URL:latest
 ```
 

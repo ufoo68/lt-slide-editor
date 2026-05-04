@@ -11,8 +11,9 @@ MarkdownでLT向けスライドを作るNext.js App Router MVPです。Firebase 
 - `sanitize-html` によるHTML sanitize
 - 公開/非公開切り替え、公開URL閲覧
 - LT向け警告: 文字数、箇条書き数、スライド枚数、コードブロック行数
+- 画像ライブラリ、Markdown画像挿入
 - Prisma schema、migration
-- Cloud Storage Signed URL用ヘルパー `lib/storage.ts`
+- ローカルMinIO / 本番Cloud Storage用ヘルパー `lib/storage.ts`
 
 ## ローカル起動
 
@@ -38,9 +39,15 @@ FIREBASE_AUTH_EMULATOR_HOST="localhost:9099"
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 GCS_BUCKET_NAME=""
+STORAGE_BACKEND="s3"
+S3_ENDPOINT="http://localhost:9000"
+S3_REGION="us-east-1"
+S3_BUCKET_NAME="lt-slide-editor"
+S3_ACCESS_KEY_ID="minioadmin"
+S3_SECRET_ACCESS_KEY="minioadmin"
 ```
 
-3. Docker ComposeでローカルPostgreSQLとFirebase Auth Emulatorを起動し、Prisma migrationを適用します。
+3. Docker ComposeでローカルPostgreSQL、Firebase Auth Emulator、MinIOを起動し、Prisma migrationを適用します。
 
 ```bash
 npm run local:up
@@ -65,7 +72,7 @@ npm run check
 
 ## ローカルDocker
 
-Docker ComposeでPostgreSQL 16とFirebase Auth Emulatorを起動します。DB名は `lt_slide_editor`、ユーザーとパスワードはどちらも `postgres` です。
+Docker ComposeでPostgreSQL 16、Firebase Auth Emulator、画像保存用MinIOを起動します。DB名は `lt_slide_editor`、ユーザーとパスワードはどちらも `postgres` です。
 
 ```bash
 npm run local:up
@@ -76,9 +83,9 @@ npm run db:migrate
 よく使うコマンド:
 
 ```bash
-npm run local:up     # PostgreSQLとFirebase Auth Emulatorを起動
+npm run local:up     # PostgreSQL、Firebase Auth Emulator、MinIOを起動
 npm run local:down   # Compose環境を停止・削除
-npm run local:logs   # PostgreSQLとFirebase Auth Emulatorのログ表示
+npm run local:logs   # PostgreSQL、Firebase Auth Emulator、MinIOのログ表示
 npm run local:reset  # Compose volumeごと削除して作り直し
 npm run db:up        # PostgreSQLだけ起動
 npm run db:down      # PostgreSQLだけ停止
@@ -110,6 +117,20 @@ PostgreSQLとAuth Emulatorのデータをまとめて消して作り直す場合
 npm run local:reset
 ```
 
+## ローカル画像ストレージ
+
+ローカル開発ではDocker ComposeでMinIOを起動し、画像ライブラリのアップロード先として使います。実Cloud Storageには接続しません。
+
+MinIO Consoleは `http://localhost:9001`、ユーザー名とパスワードはどちらも `minioadmin` です。既定のバケットは `lt-slide-editor` です。
+
+画像ライブラリにアップロードした画像は、Markdownでは次のような形で挿入されます。
+
+```markdown
+![image.png](/api/images/IMAGE_ID/file)
+```
+
+本番環境では `STORAGE_BACKEND="gcs"` と `GCS_BUCKET_NAME` を設定してCloud Storageへ保存します。
+
 ## Firebase設定
 
 本番やステージングではFirebase ConsoleでWebアプリを作成し、Authenticationのメール/パスワードとGoogleログインを有効化します。クライアント設定を `NEXT_PUBLIC_FIREBASE_*` に入れ、サーバー側のID token検証用にサービスアカウントの `project_id`、`client_email`、`private_key` を `FIREBASE_*` に設定します。本番環境では `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` と `FIREBASE_AUTH_EMULATOR_HOST` を設定しないでください。
@@ -118,5 +139,6 @@ npm run local:reset
 
 - `prisma/schema.prisma`: User、Deck、DeckVersion、DeckAsset、DeckExport
 - `app/api/decks`: 認証付きデッキAPI
+- `app/api/images`: 認証付き画像ライブラリAPI
 - `components/DeckEditor.tsx`: Markdown編集、プレビュー、公開切り替え、LTチェック
 - `lib/markdown.ts`: 分割、HTML変換、sanitize、警告生成
