@@ -3,10 +3,26 @@
 import { useMemo, useState } from "react";
 import { renderSlides } from "@/lib/markdown";
 
-export function SlidePreview({ markdown }: { markdown: string }) {
+type SlidePreviewProps = {
+  activeIndex?: number;
+  markdown: string;
+  onActiveIndexChange?: (index: number) => void;
+};
+
+export function SlidePreview({ activeIndex, markdown, onActiveIndexChange }: SlidePreviewProps) {
   const slides = useMemo(() => renderSlides(markdown), [markdown]);
-  const [active, setActive] = useState(0);
+  const [internalActive, setInternalActive] = useState(0);
+  const active = activeIndex ?? internalActive;
   const current = slides[Math.min(active, Math.max(slides.length - 1, 0))];
+
+  function setActive(index: number) {
+    const nextIndex = Math.min(Math.max(index, 0), Math.max(slides.length - 1, 0));
+    if (onActiveIndexChange) {
+      onActiveIndexChange(nextIndex);
+      return;
+    }
+    setInternalActive(nextIndex);
+  }
 
   if (!current) {
     return (
@@ -28,7 +44,7 @@ export function SlidePreview({ markdown }: { markdown: string }) {
         <button
           className="h-10 rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40"
           disabled={active === 0}
-          onClick={() => setActive((value) => Math.max(0, value - 1))}
+          onClick={() => setActive(active - 1)}
           type="button"
         >
           前へ
@@ -39,7 +55,7 @@ export function SlidePreview({ markdown }: { markdown: string }) {
         <button
           className="h-10 rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40"
           disabled={active >= slides.length - 1}
-          onClick={() => setActive((value) => Math.min(slides.length - 1, value + 1))}
+          onClick={() => setActive(active + 1)}
           type="button"
         >
           次へ

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
 import { SlidePreview } from "@/components/SlidePreview";
-import { analyzeDeck, renderSlides } from "@/lib/markdown";
+import { analyzeDeck, joinEditableSlides, splitEditableSlides } from "@/lib/markdown";
 
 type Deck = {
   id: string;
@@ -24,57 +24,27 @@ type LibrarySlide = {
   updatedAt: string;
 };
 
-function currentSlide(markdown: string, caret: number) {
-  const separator = /\n---\s*(?:\n|$)/g;
-  let start = 0;
-  let end = markdown.length;
-  let match: RegExpExecArray | null;
-
-  while ((match = separator.exec(markdown))) {
-    if (match.index < caret) {
-      start = separator.lastIndex;
-      continue;
-    }
-
-    end = match.index;
-    break;
-  }
-
-  return {
-    end,
-    markdown: markdown.slice(start, end).trim(),
-  };
-}
-
-function insertAfterSlide(markdown: string, caret: number, slideMarkdown: string) {
-  const slide = currentSlide(markdown, caret);
-  const before = markdown.slice(0, slide.end).trimEnd();
-  const after = markdown.slice(slide.end).trimStart();
-  const reusableSlide = slideMarkdown.trim();
-
-  if (!before) {
-    return after ? `${reusableSlide}\n\n---\n\n${after}` : reusableSlide;
-  }
-
-  return `${before}\n\n---\n\n${reusableSlide}${after ? `\n\n${after}` : ""}`;
-}
-
 export function DeckEditor() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user, loading, token } = useAuth();
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [deck, setDeck] = useState<Deck | null>(null);
   const [title, setTitle] = useState("");
   const [markdown, setMarkdown] = useState("");
-  const [caret, setCaret] = useState(0);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [editMode, setEditMode] = useState<"page" | "full">("page");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [librarySlides, setLibrarySlides] = useState<LibrarySlide[]>([]);
   const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryLoaded, setLibraryLoaded] = useState(false);
+  const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const warnings = useMemo(() => analyzeDeck(markdown), [markdown]);
-  const slideCount = useMemo(() => renderSlides(markdown).length, [markdown]);
+  const slideCount = slides.length;
+  const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
+  const activeSlideMarkdown = slides[safeActiveSlideIndex] ?? "";
 
   useEffect(() => {
     if (!loading && !user) {
@@ -98,7 +68,7 @@ export function DeckEditor() {
       setDeck(data.deck);
       setTitle(data.deck.title);
       setMarkdown(data.deck.markdown);
-      setCaret(0);
+      setActiveSlideIndex(0);
       setVisibility(data.deck.visibility);
     }
     load();
@@ -106,7 +76,7 @@ export function DeckEditor() {
 
   useEffect(() => {
     async function loadLibrary() {
-      if (!user) return;
+      if (!user || !libraryOpen || libraryLoaded) return;
       setLibraryError(null);
       const idToken = await token();
       const response = await fetch("/api/slide-library", {
@@ -118,21 +88,52 @@ export function DeckEditor() {
       }
       const data = (await response.json()) as { slides: LibrarySlide[] };
       setLibrarySlides(data.slides);
+      setLibraryLoaded(true);
     }
     loadLibrary();
-  }, [token, user]);
+  }, [libraryLoaded, libraryOpen, token, user]);
 
-  function syncCaret() {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      setCaret(textarea.selectionStart);
+  async function copyLibrarySlide(slide: LibrarySlide) {
+    setLibraryError(null);
+    try {
+      await navigator.clipboard.writeText(slide.markdown.trim());
+      setStatus(`「${slide.title}」のMarkdownをコピーしました`);
+    } catch {
+      setLibraryError("クリップボードにコピーできませんでした");
     }
   }
 
-  function insertLibrarySlide(slide: LibrarySlide) {
-    const nextMarkdown = insertAfterSlide(markdown, caret, slide.markdown);
-    setMarkdown(nextMarkdown);
-    setStatus("ライブラリのスライドを挿入しました");
+  function updateActiveSlide(nextMarkdown: string) {
+    const nextSlides = [...slides];
+    nextSlides[safeActiveSlideIndex] = nextMarkdown;
+    setMarkdown(joinEditableSlides(nextSlides));
+  }
+
+  function goPreviousSlide() {
+    setActiveSlideIndex((index) => Math.max(0, index - 1));
+  }
+
+  function goNextSlide() {
+    if (safeActiveSlideIndex < slides.length - 1) {
+      setActiveSlideIndex((index) => index + 1);
+      return;
+    }
+
+    const nextSlides = [...slides, ""];
+    setMarkdown(joinEditableSlides(nextSlides));
+    setActiveSlideIndex(nextSlides.length - 1);
+  }
+
+  function deleteActiveSlide() {
+    if (slides.length <= 1) {
+      setMarkdown("");
+      setActiveSlideIndex(0);
+      return;
+    }
+
+    const nextSlides = slides.filter((_, index) => index !== safeActiveSlideIndex);
+    setMarkdown(joinEditableSlides(nextSlides));
+    setActiveSlideIndex((index) => Math.min(index, nextSlides.length - 1));
   }
 
   async function save() {
@@ -196,6 +197,13 @@ export function DeckEditor() {
             <button className="h-10 rounded-md bg-mint px-4 font-semibold text-white" onClick={save} type="button">
               保存
             </button>
+            <button
+              className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
+              onClick={() => setLibraryOpen(true)}
+              type="button"
+            >
+              共有スライド
+            </button>
           </div>
         </div>
 
@@ -206,64 +214,69 @@ export function DeckEditor() {
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
-              <span className="text-sm font-semibold text-stone-600">{slideCount} slides</span>
+              <span className="text-sm font-semibold text-stone-600">
+                {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} slides`}
+              </span>
             </div>
-            <textarea
-              ref={textareaRef}
-              className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
-              onChange={(event) => {
-                setMarkdown(event.target.value);
-                setCaret(event.target.selectionStart);
-              }}
-              onClick={syncCaret}
-              onKeyUp={syncCaret}
-              onSelect={syncCaret}
-              spellCheck={false}
-              value={markdown}
-            />
+            <div className="flex rounded-md border border-line bg-white p-1">
+              <button
+                className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${editMode === "page" ? "bg-ink text-white" : ""}`}
+                onClick={() => setEditMode("page")}
+                type="button"
+              >
+                ページ編集
+              </button>
+              <button
+                className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${editMode === "full" ? "bg-ink text-white" : ""}`}
+                onClick={() => setEditMode("full")}
+                type="button"
+              >
+                Full Markdown
+              </button>
+            </div>
+            {editMode === "page" ? (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex gap-2">
+                  <button
+                    className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold disabled:opacity-40"
+                    disabled={safeActiveSlideIndex === 0}
+                    onClick={goPreviousSlide}
+                    type="button"
+                  >
+                    前のページへ
+                  </button>
+                  <button className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold" onClick={goNextSlide} type="button">
+                    次のページへ
+                  </button>
+                </div>
+                <button className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold" onClick={deleteActiveSlide} type="button">
+                  このページを削除
+                </button>
+              </div>
+            ) : null}
+            {editMode === "page" ? (
+              <textarea
+                className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+                onChange={(event) => updateActiveSlide(event.target.value)}
+                spellCheck={false}
+                value={activeSlideMarkdown}
+              />
+            ) : (
+              <textarea
+                className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+                onChange={(event) => setMarkdown(event.target.value)}
+                spellCheck={false}
+                value={markdown}
+              />
+            )}
           </div>
           <aside className="grid content-start gap-4">
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">Preview</h2>
-                <span className="text-sm font-semibold text-stone-600">区切り: ---</span>
+                <span className="text-sm font-semibold text-stone-600">ページ: {safeActiveSlideIndex + 1}</span>
               </div>
-              <SlidePreview markdown={markdown} />
-            </div>
-            <div className="rounded-lg border border-line bg-white p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">共有スライド</h2>
-                <Link className="text-sm font-semibold text-steel" href="/slides/new">
-                  作成
-                </Link>
-              </div>
-              {libraryError ? <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
-              <div className="grid gap-2">
-                {librarySlides.length ? (
-                  librarySlides.map((slide) => (
-                    <article className="rounded-md border border-line p-3" key={slide.id}>
-                      <div className="min-w-0">
-                        <h3 className="truncate text-sm font-black">{slide.title}</h3>
-                        <p className="mt-1 text-xs text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ").slice(0, 90)}</p>
-                      </div>
-                      <button
-                        className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
-                        onClick={() => insertLibrarySlide(slide)}
-                        type="button"
-                      >
-                        現在のスライドの後ろに挿入
-                      </button>
-                    </article>
-                  ))
-                ) : (
-                  <div className="rounded-md border border-dashed border-line p-4">
-                    <p className="text-sm text-stone-600">共有スライドはまだありません。</p>
-                    <Link className="mt-3 inline-flex rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href="/slides/new">
-                      共有スライド作成
-                    </Link>
-                  </div>
-                )}
-              </div>
+              <SlidePreview activeIndex={safeActiveSlideIndex} markdown={markdown} onActiveIndexChange={setActiveSlideIndex} />
             </div>
             <div className="rounded-lg border border-line bg-white p-4">
               <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">LTチェック</h2>
@@ -283,6 +296,51 @@ export function DeckEditor() {
           </aside>
         </section>
       </main>
+      {libraryOpen ? (
+        <div className="fixed inset-0 z-40">
+          <button
+            aria-label="共有スライドを閉じる"
+            className="absolute inset-0 bg-black/20"
+            onClick={() => setLibraryOpen(false)}
+            type="button"
+          />
+          <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-black">共有スライド</h2>
+              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setLibraryOpen(false)} type="button">
+                閉じる
+              </button>
+            </div>
+            <Link className="rounded-md bg-ink px-4 py-3 text-center text-sm font-semibold text-white" href="/slides/new">
+              共有スライド作成
+            </Link>
+            {libraryError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
+            <div className="grid gap-2">
+              {librarySlides.length ? (
+                librarySlides.map((slide) => (
+                  <article className="rounded-md border border-line bg-white p-3" key={slide.id}>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-black">{slide.title}</h3>
+                      <p className="mt-1 text-xs text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ").slice(0, 120)}</p>
+                    </div>
+                    <button
+                      className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
+                      onClick={() => copyLibrarySlide(slide)}
+                      type="button"
+                    >
+                      Markdownをコピー
+                    </button>
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-md border border-dashed border-line bg-white p-4">
+                  <p className="text-sm text-stone-600">共有スライドはまだありません。</p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </>
   );
 }

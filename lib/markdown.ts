@@ -55,6 +55,15 @@ export function splitSlides(markdown: string) {
     .filter(Boolean);
 }
 
+export function splitEditableSlides(markdown: string) {
+  const slides = markdown.split(/\n---\s*(?:\n|$)/g).map((slide) => slide.trim());
+  return slides.length ? slides : [""];
+}
+
+export function joinEditableSlides(slides: string[]) {
+  return slides.map((slide) => slide.trim()).join("\n\n---\n\n");
+}
+
 export function renderMarkdown(markdown: string) {
   return sanitizeHtml(md.render(markdown), sanitizeOptions);
 }
@@ -75,7 +84,7 @@ export function slideStats(markdown: string): SlideStats {
 }
 
 export function renderSlides(markdown: string): Slide[] {
-  return splitSlides(markdown).map((slide, index) => ({
+  return splitEditableSlides(markdown).map((slide, index) => ({
     index,
     markdown: slide,
     html: renderMarkdown(slide),
