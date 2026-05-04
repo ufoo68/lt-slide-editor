@@ -30,8 +30,8 @@
     "local:logs": "docker compose logs -f postgres firebase-auth",
     "local:reset": "docker compose down -v && docker compose up -d --wait postgres firebase-auth",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:migrate": "node --env-file-if-exists=.env --env-file-if-exists=.env.local ./node_modules/prisma/build/index.js migrate dev",
+    "prisma:deploy": "node --env-file-if-exists=.env --env-file-if-exists=.env.local ./node_modules/prisma/build/index.js migrate deploy"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.14.0",
