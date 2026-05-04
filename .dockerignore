@@ -1,0 +1,12 @@
+.env
+.env*.local
+.git
+.next
+coverage
+dist
+node_modules
+npm-debug.log*
+Dockerfile.firebase
+docker-compose.yml
+prisma/dev.db
+tsconfig.tsbuildinfo
