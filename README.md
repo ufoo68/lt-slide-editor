@@ -25,7 +25,7 @@ npm install
 2. `.env.example` を元に `.env` を作成します。
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/lt_slide_editor?schema=public"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/lt_slide_editor?schema=public"
 NEXT_PUBLIC_FIREBASE_API_KEY="..."
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="..."
 NEXT_PUBLIC_FIREBASE_PROJECT_ID="..."
@@ -33,14 +33,14 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="..."
 FIREBASE_PROJECT_ID="..."
 FIREBASE_CLIENT_EMAIL="..."
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GCS_BUCKET_NAME="..."
+GCS_BUCKET_NAME=""
 ```
 
-3. PostgreSQLを起動し、Prisma migrationを適用します。
+3. ローカルPostgreSQLを起動し、Prisma migrationを適用します。
 
 ```bash
-npm run prisma:generate
-npm run prisma:migrate
+npm run db:up
+npm run db:migrate
 ```
 
 4. 開発サーバーを起動します。
@@ -50,6 +50,30 @@ npm run dev
 ```
 
 ブラウザで `http://localhost:3000` を開きます。
+
+## ローカルDB
+
+DockerでPostgreSQL 16を起動します。Windowsでは `package.json` のnpm scriptsから `scripts/local-db.ps1` を実行します。コンテナ名は `lt-slide-editor-postgres`、DB名は `lt_slide_editor`、ユーザーとパスワードはどちらも `postgres` です。
+
+```bash
+npm run db:up
+npm run db:status
+npm run db:migrate
+```
+
+よく使うコマンド:
+
+```bash
+npm run db:up       # 起動
+npm run db:down     # 停止
+npm run db:restart  # 再起動
+npm run db:logs     # ログ表示
+npm run db:status   # 状態とDATABASE_URL表示
+npm run db:reset    # コンテナ削除後に作り直し
+npm run db:studio   # Prisma Studio
+```
+
+`db:reset` はローカルDBのデータを削除します。必要なデッキがある場合は先に退避してください。
 
 ## Firebase設定
 
