@@ -27,15 +27,12 @@ export default function HomePage() {
             LT Slide Editor
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-700">
-            5〜15分のLTを素早く作るための、MarkdownベースのWebスライド作成SaaSです。箇条書き、コード、公開URL共有に絞って、Cloud RunとGCP構成で動かせます。
+            5〜15分のLTを素早く作るための、MarkdownベースのWebスライド作成ツールです。箇条書き、コード、公開URL共有に絞って、発表資料を軽く作れます。
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link className="rounded-md bg-ink px-5 py-3 font-semibold text-white" href="#login">
               はじめる
             </Link>
-            <a className="rounded-md border border-line px-5 py-3 font-semibold" href="https://cloud.google.com/run" rel="noreferrer" target="_blank">
-              Cloud Run Ready
-            </a>
           </div>
         </section>
         <section className="grid justify-items-center" id="login">

@@ -11,7 +11,7 @@ MarkdownでLT向けスライドを作るNext.js App Router MVPです。Firebase 
 - `sanitize-html` によるHTML sanitize
 - 公開/非公開切り替え、公開URL閲覧
 - LT向け警告: 文字数、箇条書き数、スライド枚数、コードブロック行数
-- Prisma schema、migration、Cloud Run向けDockerfile
+- Prisma schema、migration
 - Cloud Storage Signed URL用ヘルパー `lib/storage.ts`
 
 ## ローカル起動
@@ -61,7 +61,7 @@ npm run dev:local
 npm run check
 ```
 
-`npm run build` はCloud Run向けのstandalone出力を確認したい時、またはデプロイ前に実行します。
+`npm run build` は本番ビルドを確認したい時に実行します。
 
 ## ローカルDocker
 
@@ -114,47 +114,9 @@ npm run local:reset
 
 本番やステージングではFirebase ConsoleでWebアプリを作成し、Authenticationのメール/パスワードとGoogleログインを有効化します。クライアント設定を `NEXT_PUBLIC_FIREBASE_*` に入れ、サーバー側のID token検証用にサービスアカウントの `project_id`、`client_email`、`private_key` を `FIREBASE_*` に設定します。本番環境では `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` と `FIREBASE_AUTH_EMULATOR_HOST` を設定しないでください。
 
-## Cloud SQL for PostgreSQL
-
-Cloud RunからCloud SQLへ接続する場合、Cloud RunサービスにCloud SQL接続を追加し、Unix socket形式の `DATABASE_URL` を設定できます。
-
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@localhost/DB_NAME?host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME"
-```
-
-Cloud SQL Auth Proxyを使うローカル開発では、通常のlocalhost接続文字列で動かせます。
-
-## Cloud Runデプロイ
-
-Artifact Registryを作成済みとして、以下の流れでデプロイできます。
-
-```bash
-gcloud builds submit --tag REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/lt-slide-editor:latest
-gcloud run deploy lt-slide-editor \
-  --image REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/lt-slide-editor:latest \
-  --region REGION \
-  --allow-unauthenticated \
-  --add-cloudsql-instances PROJECT_ID:REGION:INSTANCE_NAME \
-  --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY=... \
-  --set-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=... \
-  --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID=... \
-  --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=... \
-  --set-env-vars FIREBASE_PROJECT_ID=... \
-  --set-env-vars FIREBASE_CLIENT_EMAIL=... \
-  --set-env-vars GCS_BUCKET_NAME=... \
-  --set-secrets DATABASE_URL=DATABASE_URL:latest,FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY:latest
-```
-
-本番DBにはデプロイ前後でmigrationを適用します。Cloud Run Job、Cloud Build step、または一時的な管理端末から次を実行してください。
-
-```bash
-npm run prisma:deploy
-```
-
 ## 主要ファイル
 
 - `prisma/schema.prisma`: User、Deck、DeckVersion、DeckAsset、DeckExport
 - `app/api/decks`: 認証付きデッキAPI
 - `components/DeckEditor.tsx`: Markdown編集、プレビュー、公開切り替え、LTチェック
 - `lib/markdown.ts`: 分割、HTML変換、sanitize、警告生成
-- `Dockerfile`: Next.js standaloneをCloud Runで動かすコンテナ
