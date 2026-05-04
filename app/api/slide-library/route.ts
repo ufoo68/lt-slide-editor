@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
+import { splitSlides } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
 
 const createSlideSchema = z.object({
   title: z.string().trim().min(1).max(80),
-  markdown: z.string().trim().min(1).max(8000),
+  markdown: z
+    .string()
+    .trim()
+    .min(1)
+    .max(8000)
+    .refine((markdown) => splitSlides(markdown).length === 1 && !/\n---\s*(?:\n|$)/.test(markdown), {
+      message: "共有スライドは1ページだけ保存できます",
+    }),
 });
 
 function apiError(error: unknown) {

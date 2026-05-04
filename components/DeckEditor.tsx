@@ -28,13 +28,11 @@ function currentSlide(markdown: string, caret: number) {
   const separator = /\n---\s*(?:\n|$)/g;
   let start = 0;
   let end = markdown.length;
-  let index = 1;
   let match: RegExpExecArray | null;
 
   while ((match = separator.exec(markdown))) {
     if (match.index < caret) {
       start = separator.lastIndex;
-      index += 1;
       continue;
     }
 
@@ -44,18 +42,8 @@ function currentSlide(markdown: string, caret: number) {
 
   return {
     end,
-    index,
     markdown: markdown.slice(start, end).trim(),
   };
-}
-
-function titleFromSlide(markdown: string, index: number) {
-  const heading = markdown
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => /^#{1,3}\s+\S/.test(line));
-
-  return heading?.replace(/^#{1,3}\s+/, "").slice(0, 80) || `スライド ${index}`;
 }
 
 function insertAfterSlide(markdown: string, caret: number, slideMarkdown: string) {
@@ -84,13 +72,9 @@ export function DeckEditor() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [librarySlides, setLibrarySlides] = useState<LibrarySlide[]>([]);
-  const [libraryTitle, setLibraryTitle] = useState("");
-  const [libraryStatus, setLibraryStatus] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
-  const [libraryBusy, setLibraryBusy] = useState(false);
   const warnings = useMemo(() => analyzeDeck(markdown), [markdown]);
   const slideCount = useMemo(() => renderSlides(markdown).length, [markdown]);
-  const activeSlide = useMemo(() => currentSlide(markdown, caret), [caret, markdown]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -142,63 +126,6 @@ export function DeckEditor() {
     const textarea = textareaRef.current;
     if (textarea) {
       setCaret(textarea.selectionStart);
-    }
-  }
-
-  async function saveCurrentSlideToLibrary() {
-    setLibraryBusy(true);
-    setLibraryStatus(null);
-    setLibraryError(null);
-    try {
-      if (!activeSlide.markdown) {
-        throw new Error("保存するスライドが空です");
-      }
-
-      const idToken = await token();
-      const response = await fetch("/api/slide-library", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: libraryTitle.trim() || titleFromSlide(activeSlide.markdown, activeSlide.index),
-          markdown: activeSlide.markdown,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error("ライブラリへの保存に失敗しました");
-      }
-      const data = (await response.json()) as { slide: LibrarySlide };
-      setLibrarySlides((slides) => [data.slide, ...slides]);
-      setLibraryTitle("");
-      setLibraryStatus("ライブラリに保存しました");
-    } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : "ライブラリへの保存に失敗しました");
-    } finally {
-      setLibraryBusy(false);
-    }
-  }
-
-  async function deleteLibrarySlide(id: string) {
-    setLibraryBusy(true);
-    setLibraryStatus(null);
-    setLibraryError(null);
-    try {
-      const idToken = await token();
-      const response = await fetch(`/api/slide-library/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
-        throw new Error("ライブラリから削除できませんでした");
-      }
-      setLibrarySlides((slides) => slides.filter((slide) => slide.id !== id));
-      setLibraryStatus("ライブラリから削除しました");
-    } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : "ライブラリから削除できませんでした");
-    } finally {
-      setLibraryBusy(false);
     }
   }
 
@@ -304,45 +231,20 @@ export function DeckEditor() {
               <SlidePreview markdown={markdown} />
             </div>
             <div className="rounded-lg border border-line bg-white p-4">
-              <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">スライドライブラリ</h2>
-              <div className="grid gap-2">
-                <label className="grid gap-1 text-sm font-semibold">
-                  保存名
-                  <input
-                    className="h-10 rounded-md border border-line px-3"
-                    onChange={(event) => setLibraryTitle(event.target.value)}
-                    placeholder={titleFromSlide(activeSlide.markdown, activeSlide.index)}
-                    value={libraryTitle}
-                  />
-                </label>
-                <button
-                  className="h-10 rounded-md bg-ink px-4 text-sm font-semibold text-white disabled:opacity-50"
-                  disabled={libraryBusy || !activeSlide.markdown}
-                  onClick={saveCurrentSlideToLibrary}
-                  type="button"
-                >
-                  現在のスライドを保存
-                </button>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">共有スライド</h2>
+                <Link className="text-sm font-semibold text-steel" href="/slides/new">
+                  作成
+                </Link>
               </div>
               {libraryError ? <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
-              {libraryStatus ? <p className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{libraryStatus}</p> : null}
-              <div className="mt-4 grid gap-2">
+              <div className="grid gap-2">
                 {librarySlides.length ? (
                   librarySlides.map((slide) => (
                     <article className="rounded-md border border-line p-3" key={slide.id}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-black">{slide.title}</h3>
-                          <p className="mt-1 text-xs text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ").slice(0, 90)}</p>
-                        </div>
-                        <button
-                          className="rounded border border-line px-2 py-1 text-xs font-semibold"
-                          disabled={libraryBusy}
-                          onClick={() => deleteLibrarySlide(slide.id)}
-                          type="button"
-                        >
-                          削除
-                        </button>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-black">{slide.title}</h3>
+                        <p className="mt-1 text-xs text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ").slice(0, 90)}</p>
                       </div>
                       <button
                         className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
@@ -354,7 +256,12 @@ export function DeckEditor() {
                     </article>
                   ))
                 ) : (
-                  <p className="text-sm text-stone-600">保存済みスライドはまだありません。</p>
+                  <div className="rounded-md border border-dashed border-line p-4">
+                    <p className="text-sm text-stone-600">共有スライドはまだありません。</p>
+                    <Link className="mt-3 inline-flex rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href="/slides/new">
+                      共有スライド作成
+                    </Link>
+                  </div>
                 )}
               </div>
             </div>

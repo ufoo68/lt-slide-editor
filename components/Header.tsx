@@ -20,6 +20,9 @@ export function Header() {
               <Link className="font-semibold text-steel" href="/dashboard">
                 Dashboard
               </Link>
+              <Link className="font-semibold text-steel" href="/slides/new">
+                共有スライド
+              </Link>
               <button className="rounded-md border border-line px-3 py-2 font-semibold" onClick={() => signOut(getClientAuth())}>
                 Logout
               </button>
