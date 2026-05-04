@@ -84,3 +84,26 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     return apiError(error);
   }
 }
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    const params = await context.params;
+    const user = await requireUser(request);
+    const deck = await prisma.deck.findFirst({
+      where: { id: params.id, userId: user.id },
+      select: { id: true },
+    });
+
+    if (!deck) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await prisma.deck.delete({
+      where: { id: deck.id },
+    });
+
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    return apiError(error);
+  }
+}

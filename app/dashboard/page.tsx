@@ -81,6 +81,26 @@ export default function DashboardPage() {
     }
   }
 
+  async function deleteDeck(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const idToken = await token();
+      const response = await fetch(`/api/decks/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!response.ok) {
+        throw new Error("発表用スライドを削除できませんでした");
+      }
+      setDecks((currentDecks) => currentDecks.filter((deck) => deck.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "発表用スライドを削除できませんでした");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading || !user) {
     return <main className="p-6">Loading...</main>;
   }
@@ -138,6 +158,14 @@ export default function DashboardPage() {
                         閲覧
                       </Link>
                     ) : null}
+                    <button
+                      className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                      disabled={busy}
+                      onClick={() => deleteDeck(deck.id)}
+                      type="button"
+                    >
+                      削除
+                    </button>
                     <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/decks/${deck.id}/edit`}>
                       編集
                     </Link>
