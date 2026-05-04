@@ -114,13 +114,16 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-black">スライド一覧</h1>
             <p className="mt-1 text-sm text-stone-600">{user.email}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div>
+            {activeTab === "shared" ? (
             <Link className="rounded-md border border-line bg-white px-4 py-3 font-semibold" href="/slides/new">
               共有スライド作成
             </Link>
+            ) : (
             <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/decks/new">
               新規作成
             </Link>
+            )}
           </div>
         </div>
         <div className="mb-5 flex rounded-md border border-line bg-white p-1">

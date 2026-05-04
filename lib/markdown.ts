@@ -68,12 +68,12 @@ export function splitSlides(markdown: string) {
 }
 
 export function splitEditableSlides(markdown: string) {
-  const slides = markdown.split(/\n---\s*(?:\n|$)/g).map((slide) => slide.trim());
+  const slides = markdown.split(/\n---\s*(?:\n|$)/g);
   return slides.length ? slides : [""];
 }
 
 export function joinEditableSlides(slides: string[]) {
-  return slides.map((slide) => slide.trim()).join("\n\n---\n\n");
+  return slides.join("\n---\n");
 }
 
 export function renderMarkdown(markdown: string) {
