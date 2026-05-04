@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { renderSlides } from "@/lib/markdown";
+import { SlideContent } from "@/components/SlideContent";
 
 type SlidePreviewProps = {
   activeIndex?: number;
@@ -35,9 +36,10 @@ export function SlidePreview({ activeIndex, markdown, onActiveIndexChange }: Sli
   return (
     <div className="grid gap-3">
       <div className="aspect-video overflow-hidden rounded-lg border border-line bg-white shadow-panel">
-        <article
+        <SlideContent
           className="slide-content flex h-full flex-col justify-center p-8"
-          dangerouslySetInnerHTML={{ __html: current.html }}
+          html={current.html}
+          key={`${current.index}-${current.html}`}
         />
       </div>
       <div className="flex items-center justify-between gap-3">

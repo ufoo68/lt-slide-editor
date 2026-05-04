@@ -20,6 +20,17 @@ const initialMarkdown = `# 今日話すこと
 const message = "Hello LT";
 console.log(message);
 \`\`\`
+
+---
+
+# システム構成図
+
+\`\`\`mermaid
+flowchart LR
+  Browser[Browser] --> App[Next.js App]
+  App --> DB[(PostgreSQL)]
+  App --> Auth[Firebase Auth]
+\`\`\`
 `;
 
 export default function NewDeckPage() {

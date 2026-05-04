@@ -40,6 +40,7 @@
     "firebase-admin": "^12.7.0",
     "highlight.js": "^11.10.0",
     "markdown-it": "^14.1.0",
+    "mermaid": "^11.14.0",
     "next": "^16.2.4",
     "prisma": "^5.22.0",
     "react": "^19.2.5",

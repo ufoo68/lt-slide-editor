@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SlideContent } from "@/components/SlideContent";
 
 type PublicSlide = {
   index: number;
@@ -134,9 +135,10 @@ export function PublicSlideshow({ title, updatedAt, slides }: PublicSlideshowPro
         <section className="flex flex-1 items-center justify-center px-4 py-5 sm:px-6 lg:px-10">
           <div className="w-full max-w-7xl">
             <div className="aspect-video overflow-hidden rounded-lg bg-white text-ink shadow-panel">
-              <article
+              <SlideContent
                 className="slide-content flex h-full flex-col justify-center p-6 sm:p-10 lg:p-14"
-                dangerouslySetInnerHTML={{ __html: current.html }}
+                html={current.html}
+                key={`${current.index}-${current.html}`}
               />
             </div>
           </div>

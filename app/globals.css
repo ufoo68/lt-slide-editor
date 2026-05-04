@@ -53,6 +53,20 @@ body {
   line-height: 1.55;
 }
 
+.slide-content pre.mermaid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #161616;
+  padding: 0;
+}
+
+.slide-content .mermaid svg {
+  max-height: 100%;
+  max-width: 100%;
+}
+
 .slide-content code:not(pre code) {
   background: #ece7dc;
   border-radius: 4px;

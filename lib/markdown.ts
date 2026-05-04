@@ -26,11 +26,23 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true,
   highlight(code, lang) {
+    if (lang === "mermaid") {
+      return `<pre class="mermaid">${escapeHtml(code)}</pre>`;
+    }
+
     const language = lang && hljs.getLanguage(lang) ? lang : "plaintext";
     const highlighted = hljs.highlight(code, { language }).value;
     return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
   },
 });
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 const sanitizeOptions: sanitizeHtml.IOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "h1", "h2", "pre", "code", "span"]),
