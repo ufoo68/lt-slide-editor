@@ -22,6 +22,8 @@ MarkdownでLT向けスライドを作るNext.js App Router MVPです。Firebase 
 npm install
 ```
 
+Node.jsは24系LTSを想定しています。Voltaを使う場合は `package.json` の設定でNode 24.15.0が選ばれます。
+
 2. `.env.example` を元に `.env` を作成します。
 
 ```env
@@ -46,10 +48,18 @@ npm run db:migrate
 4. 開発サーバーを起動します。
 
 ```bash
-npm run dev
+npm run dev:local
 ```
 
 ブラウザで `http://localhost:3000` を開きます。
+
+ローカル開発では `npm run build` を毎回実行する必要はありません。`next dev` は変更をオンデマンドに再コンパイルするため、画面確認は `npm run dev:local` を起動したまま行います。型とlintの確認は次を使います。
+
+```bash
+npm run check
+```
+
+`npm run build` はCloud Run向けのstandalone出力を確認したい時、またはデプロイ前に実行します。
 
 ## ローカルDB
 

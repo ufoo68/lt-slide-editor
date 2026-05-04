@@ -17,8 +17,9 @@ function apiError(error: unknown) {
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params;
     const user = await requireUser(request);
     const deck = await prisma.deck.findFirst({
       where: { id: params.id, userId: user.id },
@@ -42,8 +43,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params;
     const user = await requireUser(request);
     const input = updateDeckSchema.parse(await request.json());
 

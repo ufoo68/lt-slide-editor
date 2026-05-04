@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { renderSlides } from "@/lib/markdown";
+import { PublicSlideshow } from "@/components/PublicSlideshow";
 
-export default async function PublicDeckPage({ params }: { params: { slug: string } }) {
+export default async function PublicDeckPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const deck = await prisma.deck.findFirst({
-    where: { slug: params.slug, visibility: "public" },
+    where: { slug, visibility: "public" },
     select: { title: true, markdown: true, updatedAt: true },
   });
 
@@ -15,23 +17,10 @@ export default async function PublicDeckPage({ params }: { params: { slug: strin
   const slides = renderSlides(deck.markdown);
 
   return (
-    <main className="min-h-screen bg-ink text-ink">
-      <div className="mx-auto max-w-6xl px-4 py-5">
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-3 text-white">
-          <h1 className="text-xl font-black">{deck.title}</h1>
-          <p className="text-sm text-white/70">Updated {new Date(deck.updatedAt).toLocaleDateString("ja-JP")}</p>
-        </header>
-        <div className="grid gap-6">
-          {slides.map((slide) => (
-            <section className="aspect-video overflow-hidden rounded-lg bg-white shadow-panel" key={slide.index}>
-              <article
-                className="slide-content flex h-full flex-col justify-center p-10"
-                dangerouslySetInnerHTML={{ __html: slide.html }}
-              />
-            </section>
-          ))}
-        </div>
-      </div>
-    </main>
+    <PublicSlideshow
+      slides={slides.map((slide) => ({ index: slide.index, html: slide.html }))}
+      title={deck.title}
+      updatedAt={new Date(deck.updatedAt).toLocaleDateString("ja-JP")}
+    />
   );
 }
