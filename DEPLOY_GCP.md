@@ -148,6 +148,17 @@ roles/cloudbuild.builds.editor
 roles/artifactregistry.writer
 roles/iam.serviceAccountUser
 roles/secretmanager.secretAccessor
+roles/serviceusage.serviceUsageConsumer
+```
+
+`gcloud builds submit` で `PROJECT_ID_cloudbuild` bucketにsource archiveをアップロードするため、GitHub Actions用サービスアカウントにはCloud Build staging bucketへのObject Admin権限も付与します。
+
+```powershell
+$GITHUB_DEPLOY_SERVICE_ACCOUNT = "github-deploy@$PROJECT_ID.iam.gserviceaccount.com"
+
+gcloud storage buckets add-iam-policy-binding "gs://${PROJECT_ID}_cloudbuild" `
+  --member="serviceAccount:$GITHUB_DEPLOY_SERVICE_ACCOUNT" `
+  --role="roles/storage.objectAdmin"
 ```
 
 Cloud Run実行サービスアカウントを別に指定する場合は、その実行サービスアカウントにもSecret ManagerとCloud Storageへアクセスできる権限を付与してください。
@@ -160,4 +171,14 @@ Supabase Postgresに対してmigrationを実行するには、`DATABASE_URL` に
 npm run prisma:deploy
 ```
 
-CI/CDではCloud Run Jobとして、同じイメージに `DATABASE_URL` と `DIRECT_URL` secretを設定し、コマンドを `npm run prisma:deploy` にして実行します。
+CI/CDではCloud Run Jobとして、同じイメージに `DATABASE_URL` と `DIRECT_URL` secretを設定し、コマンドを `npm run prisma:deploy` にして実行します。PowerShellやGitHub ActionsではCloud Run Jobのargsを分けて渡します。
+
+```powershell
+gcloud run jobs deploy "$SERVICE-migrate" `
+  --image $IMAGE `
+  --region $REGION `
+  --set-secrets "DATABASE_URL=DATABASE_URL:latest,DIRECT_URL=DIRECT_URL:latest" `
+  --command npm `
+  --args run `
+  --args prisma:deploy
+```

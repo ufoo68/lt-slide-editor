@@ -74,7 +74,8 @@ jobs:
             --region "${REGION}" \
             --set-secrets DATABASE_URL=DATABASE_URL:latest,DIRECT_URL=DIRECT_URL:latest \
             --command npm \
-            --args run,prisma:deploy
+            --args run \
+            --args prisma:deploy
           gcloud run jobs execute "${JOB}" \
             --region "${REGION}" \
             --wait
