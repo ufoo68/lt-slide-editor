@@ -62,8 +62,14 @@ jobs:
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}:${GITHUB_SHA}"
           echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
 
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
       - name: Build container image
-        run: gcloud builds submit --tag "${IMAGE}" .
+        run: docker build --tag "${IMAGE}" .
+
+      - name: Push container image
+        run: docker push "${IMAGE}"
 
       - name: Run database migrations
         if: github.event_name == 'push' || github.event.inputs.run_migrations == 'true'
