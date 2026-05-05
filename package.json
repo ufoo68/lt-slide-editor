@@ -35,7 +35,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.946.0",
-    "@aws-sdk/client-s3": "^3.1041.0",
     "@google-cloud/storage": "^7.14.0",
     "@prisma/client": "^5.22.0",
     "firebase": "^10.14.1",
