@@ -138,11 +138,23 @@ export function DeckEditor() {
   async function copyImageMarkdown(image: ImageLibraryItem) {
     setImageError(null);
     try {
-      await navigator.clipboard.writeText(image.markdown);
+      await navigator.clipboard.writeText(imageMarkdownWithLayout(image));
       setStatus(`「${image.filename}」のMarkdownをコピーしました`);
     } catch {
       setImageError("クリップボードにコピーできませんでした");
     }
+  }
+
+  function imageMarkdownWithLayout(image: ImageLibraryItem) {
+    return image.markdown.replace(/\)$/, ' "lt-image:x=29;y=33;w=42;h=34")');
+  }
+
+  function insertImage(image: ImageLibraryItem) {
+    const imageMarkdown = imageMarkdownWithLayout(image);
+    const separator = activeSlideMarkdown.trim() ? "\n\n" : "";
+    updateActiveSlide(`${activeSlideMarkdown}${separator}${imageMarkdown}`);
+    setImageOpen(false);
+    setStatus(`「${image.filename}」を現在のページに追加しました`);
   }
 
   function updateActiveSlide(nextMarkdown: string) {
@@ -325,7 +337,13 @@ export function DeckEditor() {
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">Preview</h2>
                 <span className="text-sm font-semibold text-stone-600">ページ: {safeActiveSlideIndex + 1}</span>
               </div>
-              <SlidePreview activeIndex={safeActiveSlideIndex} markdown={markdown} onActiveIndexChange={setActiveSlideIndex} />
+              <SlidePreview
+                activeIndex={safeActiveSlideIndex}
+                editableImages={editMode === "page"}
+                markdown={markdown}
+                onActiveIndexChange={setActiveSlideIndex}
+                onActiveSlideMarkdownChange={updateActiveSlide}
+              />
             </div>
             <div className="rounded-lg border border-line bg-white p-4">
               <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">LTチェック</h2>
@@ -420,6 +438,13 @@ export function DeckEditor() {
                     <h3 className="mt-3 truncate text-sm font-black">{image.filename}</h3>
                     <button
                       className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
+                      onClick={() => insertImage(image)}
+                      type="button"
+                    >
+                      現在のページに追加
+                    </button>
+                    <button
+                      className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
                       onClick={() => copyImageMarkdown(image)}
                       type="button"
                     >

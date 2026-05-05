@@ -77,3 +77,43 @@ body {
   color: #2f7d6d;
   text-decoration: underline;
 }
+
+.slide-content {
+  position: relative;
+}
+
+.slide-content .slide-image-absolute {
+  max-width: none;
+  object-fit: contain;
+  position: absolute;
+  user-select: none;
+}
+
+.slide-content p:has(> .slide-image-absolute:only-child) {
+  margin: 0;
+}
+
+.slide-content.slide-content-editable .slide-image-absolute:hover,
+.slide-content .slide-image-absolute.is-editable {
+  outline: 2px solid #2f7d6d;
+  outline-offset: 2px;
+}
+
+.slide-content.slide-content-editable .slide-image-absolute:hover {
+  cursor: move;
+}
+
+.slide-content.slide-content-editable .slide-image-absolute.is-resize-nw,
+.slide-content.slide-content-editable .slide-image-absolute.is-resize-se {
+  cursor: nwse-resize;
+}
+
+.slide-content.slide-content-editable .slide-image-absolute.is-resize-ne,
+.slide-content.slide-content-editable .slide-image-absolute.is-resize-sw {
+  cursor: nesw-resize;
+}
+
+.slide-content .slide-image-absolute.is-editable {
+  outline: 2px solid #2f7d6d;
+  outline-offset: 2px;
+}
