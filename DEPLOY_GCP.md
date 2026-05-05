@@ -169,6 +169,10 @@ $GITHUB_DEPLOY_SERVICE_ACCOUNT = "github-deploy@$PROJECT_ID.iam.gserviceaccount.
 
 gcloud storage buckets add-iam-policy-binding "gs://${PROJECT_ID}_cloudbuild" `
   --member="serviceAccount:$GITHUB_DEPLOY_SERVICE_ACCOUNT" `
+  --role="roles/storage.legacyBucketReader"
+
+gcloud storage buckets add-iam-policy-binding "gs://${PROJECT_ID}_cloudbuild" `
+  --member="serviceAccount:$GITHUB_DEPLOY_SERVICE_ACCOUNT" `
   --role="roles/storage.objectAdmin"
 ```
 
