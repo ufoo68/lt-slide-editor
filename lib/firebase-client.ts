@@ -1,35 +1,50 @@
 import { getApps, initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth, GoogleAuthProvider } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+type FirebaseRuntimeConfig = {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
 };
 
-const authEmulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
-let authEmulatorConnected = false;
+type FirebaseConfigResponse = {
+  authEmulatorHost?: string;
+  config: FirebaseRuntimeConfig | null;
+  configured: boolean;
+};
 
-export function isFirebaseClientConfigured() {
-  return Boolean(
-    firebaseConfig.apiKey &&
-      firebaseConfig.authDomain &&
-      firebaseConfig.projectId &&
-      firebaseConfig.storageBucket,
-  );
+let authEmulatorConnected = false;
+let configPromise: Promise<FirebaseConfigResponse> | null = null;
+
+async function loadFirebaseConfig() {
+  configPromise ??= fetch("/api/config/firebase", { cache: "no-store" }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error("Firebase設定を読み込めませんでした");
+    }
+
+    return (await response.json()) as FirebaseConfigResponse;
+  });
+
+  return configPromise;
 }
 
-export function getFirebaseApp() {
-  if (!isFirebaseClientConfigured()) {
+export async function isFirebaseClientConfigured() {
+  return (await loadFirebaseConfig()).configured;
+}
+
+export async function getFirebaseApp() {
+  const { config } = await loadFirebaseConfig();
+  if (!config) {
     throw new Error("Firebase client configuration is missing");
   }
 
-  return getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  return getApps().length ? getApps()[0] : initializeApp(config);
 }
 
-export function getClientAuth() {
-  const auth = getAuth(getFirebaseApp());
+export async function getClientAuth() {
+  const { authEmulatorHost } = await loadFirebaseConfig();
+  const auth = getAuth(await getFirebaseApp());
 
   if (authEmulatorHost && !authEmulatorConnected) {
     connectAuthEmulator(auth, `http://${authEmulatorHost}`, { disableWarnings: true });

@@ -18,7 +18,7 @@ export function LoginPanel() {
       <div className="w-full max-w-md rounded-lg border border-line bg-white p-5 shadow-panel">
         <h2 className="text-lg font-black">Firebase設定が必要です</h2>
         <p className="mt-2 text-sm leading-6 text-stone-700">
-          `.env` に `NEXT_PUBLIC_FIREBASE_API_KEY` などのFirebase Webアプリ設定を入れて、Next.jsを再起動してください。
+          Cloud Runの環境変数に `NEXT_PUBLIC_FIREBASE_API_KEY` などのFirebase Webアプリ設定を入れて、再デプロイしてください。
         </p>
       </div>
     );
@@ -28,7 +28,7 @@ export function LoginPanel() {
     setBusy(true);
     setError(null);
     try {
-      const auth = getClientAuth();
+      const auth = await getClientAuth();
       if (mode === "signin") {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -45,7 +45,7 @@ export function LoginPanel() {
     setBusy(true);
     setError(null);
     try {
-      await signInWithPopup(getClientAuth(), getGoogleProvider());
+      await signInWithPopup(await getClientAuth(), getGoogleProvider());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Googleログインに失敗しました");
     } finally {

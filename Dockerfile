@@ -8,6 +8,8 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 FROM node:24-slim AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/lt_slide_editor?schema=public
+ENV DIRECT_URL=postgresql://postgres:postgres@localhost:5432/lt_slide_editor?schema=public
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

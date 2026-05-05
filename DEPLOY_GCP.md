@@ -17,9 +17,16 @@ $PROJECT_ID = "your-project"
 $REGION = "asia-northeast1"
 $SERVICE = "lt-slide-editor"
 $REPOSITORY = "apps"
-$IMAGE = "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE:latest"
+$IMAGE = "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${SERVICE}:latest"
 $GCS_BUCKET_NAME = "lt-slide-editor-images"
+$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "$PROJECT_ID.firebaseapp.com"
+# Firebase Console > Project settings > General > Web app config の storageBucket を入れる
+$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = "lt-slide-editor.firebasestorage.app"
 ```
+
+PowerShellでは `$SERVICE:latest` が変数スコープのように解釈されるため、Docker image tagを組み立てる時は `${SERVICE}:latest` の形にします。
+
+`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` はFirebase client初期化用の値です。画像保存先の `GCS_BUCKET_NAME` とは別で、Firebase ConsoleのWeb app configに表示される `storageBucket` をそのまま使います。プロジェクトによっては `PROJECT_ID.appspot.com` の形式の場合もあります。
 
 Supabaseの `DATABASE_URL` は、SupabaseのConnection Pooler用URLを使います。Cloud Runのようなサーバーレス環境ではpooler経由にして、接続数を絞るのがおすすめです。
 
@@ -54,6 +61,28 @@ $DIRECT_URL = "postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/po
 $DIRECT_URL | gcloud secrets create DIRECT_URL --data-file=-
 ```
 
+すでにsecretがある場合は、`create` ではなく新しいversionを追加します。
+
+```powershell
+$DATABASE_URL | gcloud secrets versions add DATABASE_URL --data-file=-
+$DIRECT_URL | gcloud secrets versions add DIRECT_URL --data-file=-
+```
+
+Cloud Runの実行サービスアカウントがSecret Managerを読めるようにします。デフォルトのCompute Engineサービスアカウントを使う場合は次の形です。
+
+```powershell
+$PROJECT_NUMBER = gcloud projects describe $PROJECT_ID --format="value(projectNumber)"
+$CLOUD_RUN_SERVICE_ACCOUNT = "$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
+
+gcloud secrets add-iam-policy-binding DATABASE_URL `
+  --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding DIRECT_URL `
+  --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
+  --role="roles/secretmanager.secretAccessor"
+```
+
 ## ビルド
 
 ```powershell
@@ -68,15 +97,17 @@ gcloud run deploy $SERVICE `
   --region $REGION `
   --allow-unauthenticated `
   --port 8080 `
-  --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY=... `
-  --set-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=PROJECT_ID.firebaseapp.com `
-  --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID=$PROJECT_ID `
-  --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=PROJECT_ID.appspot.com `
-  --set-env-vars FIREBASE_PROJECT_ID=$PROJECT_ID `
-  --set-env-vars STORAGE_BACKEND=gcs `
-  --set-env-vars GCS_BUCKET_NAME=$GCS_BUCKET_NAME `
-  --set-secrets DATABASE_URL=DATABASE_URL:latest
+  --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY="..." `
+  --set-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" `
+  --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID="$PROJECT_ID" `
+  --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" `
+  --set-env-vars FIREBASE_PROJECT_ID="$PROJECT_ID" `
+  --set-env-vars STORAGE_BACKEND="gcs" `
+  --set-env-vars GCS_BUCKET_NAME="$GCS_BUCKET_NAME" `
+  --set-secrets "DATABASE_URL=DATABASE_URL:latest"
 ```
+
+`--set-secrets` は `環境変数名=Secret Managerのsecret名:version` の指定です。`DATABASE_URL` に `$` は付けません。
 
 Cloud Run上ではFirebase Admin SDKはApplication Default Credentialsで初期化されるため、通常は `FIREBASE_CLIENT_EMAIL` と `FIREBASE_PRIVATE_KEY` は不要です。
 

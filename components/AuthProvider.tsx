@@ -2,7 +2,7 @@
 
 import { User, onAuthStateChanged } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase-client";
+import { getClientAuth } from "@/lib/firebase-client";
 
 type AuthContextValue = {
   user: User | null;
@@ -14,21 +14,41 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const configured = isFirebaseClientConfigured();
+  const [configured, setConfigured] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(configured);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!configured) {
-      return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+
+    async function watchAuth() {
+      try {
+        const auth = await getClientAuth();
+        if (cancelled) {
+          return;
+        }
+
+        setConfigured(true);
+        unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+          setUser(nextUser);
+          setLoading(false);
+        });
+      } catch {
+        if (!cancelled) {
+          setConfigured(false);
+          setLoading(false);
+        }
+      }
     }
 
-    const auth = getClientAuth();
-    return onAuthStateChanged(auth, (nextUser) => {
-      setUser(nextUser);
-      setLoading(false);
-    });
-  }, [configured]);
+    watchAuth();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -41,10 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const auth = getClientAuth();
-        if (!auth.currentUser) {
+        const clientAuth = await auth;
+        if (!clientAuth.currentUser) {
           throw new Error("ログインが必要です");
         }
-        return auth.currentUser.getIdToken();
+        return clientAuth.currentUser.getIdToken();
       },
     }),
     [configured, loading, user],

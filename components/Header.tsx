@@ -20,7 +20,7 @@ export function Header() {
               <Link className="font-semibold text-steel" href="/dashboard">
                 Dashboard
               </Link>
-              <button className="rounded-md border border-line px-3 py-2 font-semibold" onClick={() => signOut(getClientAuth())}>
+              <button className="rounded-md border border-line px-3 py-2 font-semibold" onClick={async () => signOut(await getClientAuth())}>
                 Logout
               </button>
             </>
