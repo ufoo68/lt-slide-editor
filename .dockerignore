@@ -6,6 +6,7 @@ coverage
 dist
 node_modules
 npm-debug.log*
+gha-creds-*.json
 Dockerfile.firebase
 docker-compose.yml
 prisma/dev.db

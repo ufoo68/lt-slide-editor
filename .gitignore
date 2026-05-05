@@ -5,6 +5,7 @@ node_modules
 dist
 coverage
 *.log
+gha-creds-*.json
 prisma/dev.db
 tsconfig.tsbuildinfo
 .vscode
