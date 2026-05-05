@@ -49,6 +49,11 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
 gcloud artifacts repositories create $REPOSITORY `
   --repository-format=docker `
   --location=$REGION
+
+gcloud storage buckets create "gs://$GCS_BUCKET_NAME" `
+  --project=$PROJECT_ID `
+  --location=$REGION `
+  --uniform-bucket-level-access
 ```
 
 Secret ManagerにDB接続文字列を入れます。
@@ -81,7 +86,13 @@ gcloud secrets add-iam-policy-binding DATABASE_URL `
 gcloud secrets add-iam-policy-binding DIRECT_URL `
   --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
   --role="roles/secretmanager.secretAccessor"
+
+gcloud storage buckets add-iam-policy-binding "gs://$GCS_BUCKET_NAME" `
+  --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
+  --role="roles/storage.objectAdmin"
 ```
+
+画像アップロードはFirebase Storageではなく `GCS_BUCKET_NAME` のCloud Storage bucketに保存します。Firebase側でStorageを有効化する必要はありません。
 
 ## ビルド
 
