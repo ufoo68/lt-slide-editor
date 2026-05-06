@@ -7,6 +7,7 @@ import { uniqueDeckSlug } from "@/lib/slug";
 const createDeckSchema = z.object({
   title: z.string().trim().min(1).max(120),
   markdown: z.string().default("# 新しいLT\n\n- ここに話すことを書く"),
+  visibility: z.enum(["private", "public"]).default("private"),
 });
 
 function apiError(error: unknown) {
@@ -49,12 +50,20 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         title: input.title,
         markdown: input.markdown,
+        visibility: input.visibility,
         slug,
         versions: {
           create: { markdown: input.markdown },
         },
       },
-      select: { id: true, title: true, slug: true },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        markdown: true,
+        visibility: true,
+        updatedAt: true,
+      },
     });
 
     return NextResponse.json({ deck }, { status: 201 });

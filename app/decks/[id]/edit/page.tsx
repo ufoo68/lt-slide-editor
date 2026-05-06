@@ -1,5 +1,5 @@
 import { DeckEditor } from "@/components/DeckEditor";
 
 export default function EditDeckPage() {
-  return <DeckEditor />;
+  return <DeckEditor mode="edit" />;
 }

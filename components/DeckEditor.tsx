@@ -33,18 +33,51 @@ type ImageLibraryItem = {
   url: string;
 };
 
-export function DeckEditor() {
-  const params = useParams<{ id: string }>();
+type DeckEditorProps = {
+  mode: "new" | "edit";
+};
+
+const initialMarkdown = `# 今日話すこと
+
+- 背景
+- 課題
+- 解決策
+- まとめ
+
+---
+
+# コード例
+
+\`\`\`ts
+const message = "Hello LT";
+console.log(message);
+\`\`\`
+
+---
+
+# システム構成図
+
+\`\`\`mermaid
+flowchart LR
+  Browser[Browser] --> App[Next.js App]
+  App --> DB[(PostgreSQL)]
+  App --> Auth[Firebase Auth]
+\`\`\`
+`;
+
+export function DeckEditor({ mode }: DeckEditorProps) {
+  const params = useParams<{ id?: string }>();
   const router = useRouter();
   const { user, loading, token } = useAuth();
   const [deck, setDeck] = useState<Deck | null>(null);
-  const [title, setTitle] = useState("");
-  const [markdown, setMarkdown] = useState("");
+  const [title, setTitle] = useState(mode === "new" ? "新しいLT" : "");
+  const [markdown, setMarkdown] = useState(mode === "new" ? initialMarkdown : "");
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [editMode, setEditMode] = useState<"page" | "full">("page");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
@@ -67,7 +100,7 @@ export function DeckEditor() {
 
   useEffect(() => {
     async function load() {
-      if (!user) return;
+      if (!user || mode !== "edit" || !params.id) return;
       setError(null);
       const idToken = await token();
       const response = await fetch(`/api/decks/${params.id}`, {
@@ -85,7 +118,7 @@ export function DeckEditor() {
       setVisibility(data.deck.visibility);
     }
     load();
-  }, [params.id, token, user]);
+  }, [mode, params.id, token, user]);
 
   useEffect(() => {
     async function loadLibrary() {
@@ -191,12 +224,13 @@ export function DeckEditor() {
   }
 
   async function save() {
+    setBusy(true);
     setStatus("保存中...");
     setError(null);
     try {
       const idToken = await token();
-      const response = await fetch(`/api/decks/${params.id}`, {
-        method: "PUT",
+      const response = await fetch(mode === "new" ? "/api/decks" : `/api/decks/${params.id}`, {
+        method: mode === "new" ? "POST" : "PUT",
         headers: {
           Authorization: `Bearer ${idToken}`,
           "Content-Type": "application/json",
@@ -209,9 +243,14 @@ export function DeckEditor() {
       const data = (await response.json()) as { deck: Deck };
       setDeck(data.deck);
       setStatus("保存しました");
+      if (mode === "new") {
+        router.replace(`/decks/${data.deck.id}/edit`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存に失敗しました");
       setStatus(null);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -262,7 +301,12 @@ export function DeckEditor() {
             >
               共有スライド
             </button>
-            <button className="h-10 rounded-md bg-mint px-4 font-semibold text-white" onClick={save} type="button">
+            <button
+              className="h-10 rounded-md bg-mint px-4 font-semibold text-white disabled:opacity-50"
+              disabled={busy || !title.trim()}
+              onClick={save}
+              type="button"
+            >
               保存
             </button>
           </div>
