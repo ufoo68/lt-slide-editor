@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
+import { LoadingBlock } from "@/components/LoadingBlock";
 import { SlidePreview } from "@/components/SlidePreview";
 import { useAuth } from "@/components/AuthProvider";
 import { splitSlides } from "@/lib/markdown";
@@ -58,8 +59,10 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slideLoading, setSlideLoading] = useState(mode === "edit");
   const [imageError, setImageError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [images, setImages] = useState<ImageLibraryItem[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -78,21 +81,28 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     async function loadSlide() {
       if (!user || mode !== "edit" || !params.id) return;
       setError(null);
-      const idToken = await token();
-      const response = await fetch(`/api/shared-slides/${params.id}`, {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
+      setSlideLoading(true);
+      try {
+        const idToken = await token();
+        const response = await fetch(`/api/shared-slides/${params.id}`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!response.ok) {
+          setError("共有スライドを読み込めませんでした");
+          return;
+        }
+        const data = (await response.json()) as { slide: LibrarySlide };
+        setTitle(data.slide.title);
+        setMarkdown(data.slide.markdown);
+        setSavedState({
+          markdown: data.slide.markdown,
+          title: data.slide.title,
+        });
+      } catch {
         setError("共有スライドを読み込めませんでした");
-        return;
+      } finally {
+        setSlideLoading(false);
       }
-      const data = (await response.json()) as { slide: LibrarySlide };
-      setTitle(data.slide.title);
-      setMarkdown(data.slide.markdown);
-      setSavedState({
-        markdown: data.slide.markdown,
-        title: data.slide.title,
-      });
     }
     loadSlide();
   }, [mode, params.id, token, user]);
@@ -101,17 +111,24 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     async function loadImages() {
       if (!user || !imageOpen || imageLoaded) return;
       setImageError(null);
-      const idToken = await token();
-      const response = await fetch("/api/images", {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
+      setImageLoading(true);
+      try {
+        const idToken = await token();
+        const response = await fetch("/api/images", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!response.ok) {
+          setImageError("画像ライブラリを読み込めませんでした");
+          return;
+        }
+        const data = (await response.json()) as { images: ImageLibraryItem[] };
+        setImages(data.images);
+        setImageLoaded(true);
+      } catch {
         setImageError("画像ライブラリを読み込めませんでした");
-        return;
+      } finally {
+        setImageLoading(false);
       }
-      const data = (await response.json()) as { images: ImageLibraryItem[] };
-      setImages(data.images);
-      setImageLoaded(true);
     }
     loadImages();
   }, [imageLoaded, imageOpen, token, user]);
@@ -204,8 +221,15 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     }
   }
 
-  if (loading || !user) {
-    return <main className="p-6">Loading...</main>;
+  if (loading || !user || slideLoading) {
+    return (
+      <>
+        <Header />
+        <main className="mx-auto max-w-4xl px-4 py-8">
+          <LoadingBlock label={slideLoading ? "共有スライドを読み込み中..." : "認証を確認中..."} />
+        </main>
+      </>
+    );
   }
 
   return (
@@ -303,7 +327,8 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             </label>
             {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
             <div className="grid gap-2">
-              {images.length ? (
+              {imageLoading ? <LoadingBlock label="画像を読み込み中..." /> : null}
+              {!imageLoading && images.length ? (
                 images.map((image) => (
                   <article className="rounded-md border border-line bg-white p-3" key={image.id}>
                     <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
@@ -327,11 +352,11 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
                     </button>
                   </article>
                 ))
-              ) : (
+              ) : !imageLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
                   <p className="text-sm text-stone-600">画像はまだありません。</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </aside>
         </div>

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
+import { LoadingBlock } from "@/components/LoadingBlock";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SlidePreview } from "@/components/SlidePreview";
 import { analyzeDeck, joinEditableSlides, renderSlides, splitEditableSlides } from "@/lib/markdown";
@@ -95,8 +96,10 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deckLoading, setDeckLoading] = useState(mode === "edit");
   const [imageError, setImageError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [presentationPreviewOpen, setPresentationPreviewOpen] = useState(false);
   const [images, setImages] = useState<ImageLibraryItem[]>([]);
@@ -104,6 +107,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
+  const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
@@ -126,25 +130,32 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     async function load() {
       if (!user || mode !== "edit" || !params.id) return;
       setError(null);
-      const idToken = await token();
-      const response = await fetch(`/api/presentations/${params.id}`, {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
+      setDeckLoading(true);
+      try {
+        const idToken = await token();
+        const response = await fetch(`/api/presentations/${params.id}`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!response.ok) {
+          setError("デッキを読み込めませんでした");
+          return;
+        }
+        const data = (await response.json()) as { deck: Deck };
+        setDeck(data.deck);
+        setTitle(data.deck.title);
+        setMarkdown(data.deck.markdown);
+        setActiveSlideIndex(0);
+        setVisibility(data.deck.visibility);
+        setSavedState({
+          markdown: data.deck.markdown,
+          title: data.deck.title,
+          visibility: data.deck.visibility,
+        });
+      } catch {
         setError("デッキを読み込めませんでした");
-        return;
+      } finally {
+        setDeckLoading(false);
       }
-      const data = (await response.json()) as { deck: Deck };
-      setDeck(data.deck);
-      setTitle(data.deck.title);
-      setMarkdown(data.deck.markdown);
-      setActiveSlideIndex(0);
-      setVisibility(data.deck.visibility);
-      setSavedState({
-        markdown: data.deck.markdown,
-        title: data.deck.title,
-        visibility: data.deck.visibility,
-      });
     }
     load();
   }, [mode, params.id, token, user]);
@@ -153,17 +164,24 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     async function loadLibrary() {
       if (!user || !libraryOpen || libraryLoaded) return;
       setLibraryError(null);
-      const idToken = await token();
-      const response = await fetch("/api/shared-slides", {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
+      setLibraryLoading(true);
+      try {
+        const idToken = await token();
+        const response = await fetch("/api/shared-slides", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!response.ok) {
+          setLibraryError("ライブラリを読み込めませんでした");
+          return;
+        }
+        const data = (await response.json()) as { slides: LibrarySlide[] };
+        setLibrarySlides(data.slides);
+        setLibraryLoaded(true);
+      } catch {
         setLibraryError("ライブラリを読み込めませんでした");
-        return;
+      } finally {
+        setLibraryLoading(false);
       }
-      const data = (await response.json()) as { slides: LibrarySlide[] };
-      setLibrarySlides(data.slides);
-      setLibraryLoaded(true);
     }
     loadLibrary();
   }, [libraryLoaded, libraryOpen, token, user]);
@@ -172,17 +190,24 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     async function loadImages() {
       if (!user || !imageOpen || imageLoaded) return;
       setImageError(null);
-      const idToken = await token();
-      const response = await fetch("/api/images", {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!response.ok) {
+      setImageLoading(true);
+      try {
+        const idToken = await token();
+        const response = await fetch("/api/images", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!response.ok) {
+          setImageError("画像ライブラリを読み込めませんでした");
+          return;
+        }
+        const data = (await response.json()) as { images: ImageLibraryItem[] };
+        setImages(data.images);
+        setImageLoaded(true);
+      } catch {
         setImageError("画像ライブラリを読み込めませんでした");
-        return;
+      } finally {
+        setImageLoading(false);
       }
-      const data = (await response.json()) as { images: ImageLibraryItem[] };
-      setImages(data.images);
-      setImageLoaded(true);
     }
     loadImages();
   }, [imageLoaded, imageOpen, token, user]);
@@ -334,8 +359,15 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     }
   }
 
-  if (loading || !user) {
-    return <main className="p-6">Loading...</main>;
+  if (loading || !user || deckLoading) {
+    return (
+      <>
+        <Header />
+        <main className="mx-auto max-w-4xl px-4 py-8">
+          <LoadingBlock label={deckLoading ? "デッキを読み込み中..." : "認証を確認中..."} />
+        </main>
+      </>
+    );
   }
 
   return (
@@ -523,7 +555,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </Link>
             {libraryError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
             <div className="grid gap-2">
-              {librarySlides.length ? (
+              {libraryLoading ? <LoadingBlock label="共有スライドを読み込み中..." /> : null}
+              {!libraryLoading && librarySlides.length ? (
                 librarySlides.map((slide) => (
                   <article className="rounded-md border border-line bg-white p-3" key={slide.id}>
                     <div className="min-w-0">
@@ -546,11 +579,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     </button>
                   </article>
                 ))
-              ) : (
+              ) : !libraryLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
                   <p className="text-sm text-stone-600">共有スライドはまだありません。</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </aside>
         </div>
@@ -585,7 +618,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </label>
             {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
             <div className="grid gap-2">
-              {images.length ? (
+              {imageLoading ? <LoadingBlock label="画像を読み込み中..." /> : null}
+              {!imageLoading && images.length ? (
                 images.map((image) => (
                   <article className="rounded-md border border-line bg-white p-3" key={image.id}>
                     <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
@@ -609,11 +643,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     </button>
                   </article>
                 ))
-              ) : (
+              ) : !imageLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
                   <p className="text-sm text-stone-600">画像はまだありません。</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </aside>
         </div>
