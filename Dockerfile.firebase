@@ -5,7 +5,8 @@ RUN npm install -g firebase-tools@14
 WORKDIR /workspace
 
 COPY firebase.json ./
+RUN mkdir -p /workspace/firebase-data
 
 EXPOSE 4000 9099
 
-CMD ["firebase", "emulators:start", "--only", "auth", "--project", "demo-lt-slide-editor"]
+CMD ["sh", "-c", "if [ -f /workspace/firebase-data/firebase-export-metadata.json ]; then firebase emulators:start --only auth --project demo-lt-slide-editor --import /workspace/firebase-data --export-on-exit /workspace/firebase-data; else firebase emulators:start --only auth --project demo-lt-slide-editor --export-on-exit /workspace/firebase-data; fi"]

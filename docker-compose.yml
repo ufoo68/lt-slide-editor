@@ -24,6 +24,7 @@ services:
       - "9099:9099"
     volumes:
       - ./firebase.json:/workspace/firebase.json:ro
+      - firebase-auth-data:/workspace/firebase-data
 
   minio:
     image: minio/minio:latest
@@ -49,4 +50,5 @@ services:
 
 volumes:
   postgres-data:
+  firebase-auth-data:
   minio-data:

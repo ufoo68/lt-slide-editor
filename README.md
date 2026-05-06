@@ -74,6 +74,12 @@ npm run check
 
 Docker ComposeでPostgreSQL 16、Firebase Auth Emulator、画像保存用MinIOを起動します。DB名は `lt_slide_editor`、ユーザーとパスワードはどちらも `postgres` です。
 
+ローカルデータはDockerのnamed volumeに保存されます。
+
+- `postgres-data`: PostgreSQLのデータ
+- `firebase-auth-data`: Firebase Auth Emulatorのユーザー
+- `minio-data`: MinIOの画像データ
+
 ```bash
 npm run local:up
 npm run db:status
@@ -95,7 +101,7 @@ npm run db:status    # PostgreSQLの状態表示
 npm run db:studio    # Prisma Studio
 ```
 
-`local:reset` と `db:reset` はローカルDBのデータを削除します。必要なデッキがある場合は先に退避してください。
+`local:reset` と `db:reset` はComposeのvolumeを削除するため、PostgreSQL、Firebase Auth Emulator、MinIOのローカルデータが消えます。必要なデッキや画像がある場合は先に退避してください。
 
 ## ローカルFirebase Auth
 
