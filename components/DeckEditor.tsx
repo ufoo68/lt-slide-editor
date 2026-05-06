@@ -294,6 +294,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     setStatus("保存中...");
     setError(null);
     try {
+      const normalizedSlides = [...slides];
+      while (normalizedSlides.length > 1 && !normalizedSlides.at(-1)?.trim()) {
+        normalizedSlides.pop();
+      }
+      const normalizedMarkdown = joinEditableSlides(normalizedSlides);
+      const removedEmptySlideCount = slides.length - normalizedSlides.length;
+      const nextActiveSlideIndex = Math.min(safeActiveSlideIndex, Math.max(normalizedSlides.length - 1, 0));
       const idToken = await token();
       const response = await fetch(mode === "new" ? "/api/presentations" : `/api/presentations/${params.id}`, {
         method: mode === "new" ? "POST" : "PUT",
@@ -301,19 +308,21 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           Authorization: `Bearer ${idToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, markdown, visibility }),
+        body: JSON.stringify({ title, markdown: normalizedMarkdown, visibility }),
       });
       if (!response.ok) {
         throw new Error("保存に失敗しました");
       }
       const data = (await response.json()) as { deck: Deck };
       setDeck(data.deck);
+      setMarkdown(data.deck.markdown);
+      setActiveSlideIndex(nextActiveSlideIndex);
       setSavedState({
         markdown: data.deck.markdown,
         title: data.deck.title,
         visibility: data.deck.visibility,
       });
-      setStatus("保存しました");
+      setStatus(removedEmptySlideCount ? `保存しました（空ページを${removedEmptySlideCount}件削除しました）` : "保存しました");
       if (mode === "new") {
         router.replace(`/presentations/${data.deck.id}/edit`);
       }
