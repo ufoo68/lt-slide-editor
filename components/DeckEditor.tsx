@@ -37,6 +37,12 @@ type DeckEditorProps = {
   mode: "new" | "edit";
 };
 
+type SavedDeckState = {
+  markdown: string;
+  title: string;
+  visibility: "private" | "public";
+};
+
 const initialMarkdown = `# 今日話すこと
 
 - 背景
@@ -69,12 +75,21 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const { user, loading, token } = useAuth();
+  const initialSavedState = useMemo<SavedDeckState>(
+    () => ({
+      markdown: mode === "new" ? initialMarkdown : "",
+      title: mode === "new" ? "新しいLT" : "",
+      visibility: "private",
+    }),
+    [mode],
+  );
   const [deck, setDeck] = useState<Deck | null>(null);
   const [title, setTitle] = useState(mode === "new" ? "新しいLT" : "");
   const [markdown, setMarkdown] = useState(mode === "new" ? initialMarkdown : "");
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [editMode, setEditMode] = useState<"page" | "full">("page");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
+  const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -91,6 +106,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const slideCount = slides.length;
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
   const activeSlideMarkdown = slides[safeActiveSlideIndex] ?? "";
+  const hasUnsavedChanges = title !== savedState.title || markdown !== savedState.markdown || visibility !== savedState.visibility;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -116,6 +132,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       setMarkdown(data.deck.markdown);
       setActiveSlideIndex(0);
       setVisibility(data.deck.visibility);
+      setSavedState({
+        markdown: data.deck.markdown,
+        title: data.deck.title,
+        visibility: data.deck.visibility,
+      });
     }
     load();
   }, [mode, params.id, token, user]);
@@ -242,6 +263,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       }
       const data = (await response.json()) as { deck: Deck };
       setDeck(data.deck);
+      setSavedState({
+        markdown: data.deck.markdown,
+        title: data.deck.title,
+        visibility: data.deck.visibility,
+      });
       setStatus("保存しました");
       if (mode === "new") {
         router.replace(`/presentations/${data.deck.id}/edit`);
@@ -303,7 +329,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </button>
             <button
               className="h-10 rounded-md bg-mint px-4 font-semibold text-white disabled:opacity-50"
-              disabled={busy || !title.trim()}
+              disabled={busy || !title.trim() || !hasUnsavedChanges}
               onClick={save}
               type="button"
             >

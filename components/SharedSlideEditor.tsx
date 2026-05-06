@@ -35,12 +35,25 @@ type SharedSlideEditorProps = {
   mode: "new" | "edit";
 };
 
+type SavedSharedSlideState = {
+  markdown: string;
+  title: string;
+};
+
 export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const { user, loading, token } = useAuth();
-  const [title, setTitle] = useState("自己紹介");
-  const [markdown, setMarkdown] = useState(initialMarkdown);
+  const initialSavedState = useMemo<SavedSharedSlideState>(
+    () => ({
+      markdown: mode === "new" ? initialMarkdown : "",
+      title: mode === "new" ? "自己紹介" : "",
+    }),
+    [mode],
+  );
+  const [title, setTitle] = useState(mode === "new" ? "自己紹介" : "");
+  const [markdown, setMarkdown] = useState(mode === "new" ? initialMarkdown : "");
+  const [savedState, setSavedState] = useState<SavedSharedSlideState>(initialSavedState);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,6 +64,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const slideCount = useMemo(() => splitSlides(markdown).length, [markdown]);
   const hasSeparator = useMemo(() => /\n---\s*(?:\n|$)/.test(markdown), [markdown]);
   const invalidSlideCount = slideCount !== 1 || hasSeparator;
+  const hasUnsavedChanges = title !== savedState.title || markdown !== savedState.markdown;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -73,6 +87,10 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       const data = (await response.json()) as { slide: LibrarySlide };
       setTitle(data.slide.title);
       setMarkdown(data.slide.markdown);
+      setSavedState({
+        markdown: data.slide.markdown,
+        title: data.slide.title,
+      });
     }
     loadSlide();
   }, [mode, params.id, token, user]);
@@ -142,6 +160,10 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       const data = (await response.json()) as { slide: LibrarySlide };
       setTitle(data.slide.title);
       setMarkdown(data.slide.markdown);
+      setSavedState({
+        markdown: data.slide.markdown,
+        title: data.slide.title,
+      });
       setStatus("保存しました");
       if (mode === "new") {
         router.replace(`/shared-slides/${data.slide.id}/edit`);
@@ -182,7 +204,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             </button>
             <button
               className="h-10 rounded-md bg-mint px-4 font-semibold text-white disabled:opacity-50"
-              disabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount}
+              disabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
               onClick={saveSlide}
               type="button"
             >
