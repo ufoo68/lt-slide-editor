@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/components/AuthProvider";
@@ -30,10 +30,20 @@ type ImageSummary = {
   url: string;
 };
 
+type DashboardTab = "decks" | "images" | "shared";
+
+function parseDashboardTab(value: string | null): DashboardTab {
+  if (value === "images" || value === "shared") {
+    return value;
+  }
+  return "decks";
+}
+
 export default function DashboardPage() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"decks" | "images" | "shared">("decks");
+  const searchParams = useSearchParams();
+  const activeTab = parseDashboardTab(searchParams.get("tab"));
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [images, setImages] = useState<ImageSummary[]>([]);
   const [sharedSlides, setSharedSlides] = useState<SharedSlideSummary[]>([]);
@@ -161,6 +171,17 @@ export default function DashboardPage() {
     }
   }
 
+  function changeTab(tab: DashboardTab) {
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === "decks") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `/dashboard?${nextQuery}` : "/dashboard", { scroll: false });
+  }
+
   if (loading || !user) {
     return <main className="p-6">Loading...</main>;
   }
@@ -200,21 +221,21 @@ export default function DashboardPage() {
         <div className="mb-5 flex rounded-md border border-line bg-white p-1">
           <button
             className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "decks" ? "bg-ink text-white" : ""}`}
-            onClick={() => setActiveTab("decks")}
+            onClick={() => changeTab("decks")}
             type="button"
           >
             発表用スライド
           </button>
           <button
             className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "images" ? "bg-ink text-white" : ""}`}
-            onClick={() => setActiveTab("images")}
+            onClick={() => changeTab("images")}
             type="button"
           >
             画像
           </button>
           <button
             className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "shared" ? "bg-ink text-white" : ""}`}
-            onClick={() => setActiveTab("shared")}
+            onClick={() => changeTab("shared")}
             type="button"
           >
             共有スライド
