@@ -415,7 +415,12 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   >
                     前のページへ
                   </button>
-                  <button className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold" onClick={goNextSlide} type="button">
+                  <button
+                    className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold disabled:opacity-40"
+                    disabled={!activeSlideMarkdown.trim()}
+                    onClick={goNextSlide}
+                    type="button"
+                  >
                     次のページへ
                   </button>
                 </div>
