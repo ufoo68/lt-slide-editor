@@ -19,14 +19,14 @@ body {
 }
 
 .slide-content h1 {
-  font-size: clamp(1rem, 2.7cqw, 2.35rem);
+  font-size: clamp(1.85rem, 2.85cqw, 2.75rem);
   line-height: 1.12;
   font-weight: 800;
   margin: 0 0 1.2rem;
 }
 
 .slide-content h2 {
-  font-size: clamp(0.9rem, 2.05cqw, 1.75rem);
+  font-size: clamp(1.55rem, 2.25cqw, 2.1rem);
   line-height: 1.15;
   font-weight: 750;
   margin: 0 0 1rem;
@@ -34,7 +34,7 @@ body {
 
 .slide-content p,
 .slide-content li {
-  font-size: clamp(0.75rem, 1.85cqw, 1.45rem);
+  font-size: clamp(1.25rem, 2cqw, 1.7rem);
   line-height: 1.55;
 }
 
@@ -47,9 +47,9 @@ body {
 .slide-content pre {
   border-radius: 8px;
   overflow: auto;
-  padding: clamp(0.5rem, 1.25cqw, 1rem);
+  padding: 1rem;
   background: #111827;
-  font-size: clamp(0.5rem, 1.15cqw, 1rem);
+  font-size: clamp(0.95rem, 1.35cqw, 1.2rem);
   line-height: 1.55;
 }
 
