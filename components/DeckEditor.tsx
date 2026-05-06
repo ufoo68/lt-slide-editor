@@ -103,7 +103,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       if (!user || mode !== "edit" || !params.id) return;
       setError(null);
       const idToken = await token();
-      const response = await fetch(`/api/decks/${params.id}`, {
+      const response = await fetch(`/api/presentations/${params.id}`, {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
@@ -125,7 +125,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       if (!user || !libraryOpen || libraryLoaded) return;
       setLibraryError(null);
       const idToken = await token();
-      const response = await fetch("/api/slide-library", {
+      const response = await fetch("/api/shared-slides", {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
@@ -229,7 +229,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     setError(null);
     try {
       const idToken = await token();
-      const response = await fetch(mode === "new" ? "/api/decks" : `/api/decks/${params.id}`, {
+      const response = await fetch(mode === "new" ? "/api/presentations" : `/api/presentations/${params.id}`, {
         method: mode === "new" ? "POST" : "PUT",
         headers: {
           Authorization: `Bearer ${idToken}`,
@@ -244,7 +244,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       setDeck(data.deck);
       setStatus("保存しました");
       if (mode === "new") {
-        router.replace(`/decks/${data.deck.id}/edit`);
+        router.replace(`/presentations/${data.deck.id}/edit`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存に失敗しました");
@@ -275,7 +275,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {deck?.visibility === "public" ? (
-              <Link className="rounded-md border border-line px-3 py-2 text-sm font-semibold" href={`/p/${deck.slug}`} target="_blank">
+              <Link className="rounded-md border border-line px-3 py-2 text-sm font-semibold" href={`/view/${deck.slug}`} target="_blank">
                 公開URLを開く
               </Link>
             ) : null}
@@ -422,7 +422,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 閉じる
               </button>
             </div>
-            <Link className="rounded-md bg-ink px-4 py-3 text-center text-sm font-semibold text-white" href="/slides/new">
+            <Link className="rounded-md bg-ink px-4 py-3 text-center text-sm font-semibold text-white" href="/shared-slides/new">
               共有スライド作成
             </Link>
             {libraryError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}

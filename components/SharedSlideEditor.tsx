@@ -63,7 +63,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       if (!user || mode !== "edit" || !params.id) return;
       setError(null);
       const idToken = await token();
-      const response = await fetch(`/api/slide-library/${params.id}`, {
+      const response = await fetch(`/api/shared-slides/${params.id}`, {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
@@ -128,7 +128,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       }
 
       const idToken = await token();
-      const response = await fetch(mode === "edit" ? `/api/slide-library/${params.id}` : "/api/slide-library", {
+      const response = await fetch(mode === "edit" ? `/api/shared-slides/${params.id}` : "/api/shared-slides", {
         method: mode === "edit" ? "PUT" : "POST",
         headers: {
           Authorization: `Bearer ${idToken}`,
@@ -144,7 +144,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       setMarkdown(data.slide.markdown);
       setStatus("保存しました");
       if (mode === "new") {
-        router.replace(`/slides/${data.slide.id}/edit`);
+        router.replace(`/shared-slides/${data.slide.id}/edit`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "共有スライドを保存できませんでした");

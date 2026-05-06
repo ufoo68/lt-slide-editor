@@ -52,13 +52,13 @@ export default function DashboardPage() {
       const idToken = await token();
       setError(null);
       const [deckResponse, imageResponse, sharedSlideResponse] = await Promise.all([
-        fetch("/api/decks", {
+        fetch("/api/presentations", {
           headers: { Authorization: `Bearer ${idToken}` },
         }),
         fetch("/api/images", {
           headers: { Authorization: `Bearer ${idToken}` },
         }),
-        fetch("/api/slide-library", {
+        fetch("/api/shared-slides", {
           headers: { Authorization: `Bearer ${idToken}` },
         }),
       ]);
@@ -81,7 +81,7 @@ export default function DashboardPage() {
     setError(null);
     try {
       const idToken = await token();
-      const response = await fetch(`/api/slide-library/${id}`, {
+      const response = await fetch(`/api/shared-slides/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -101,7 +101,7 @@ export default function DashboardPage() {
     setError(null);
     try {
       const idToken = await token();
-      const response = await fetch(`/api/decks/${id}`, {
+      const response = await fetch(`/api/presentations/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -176,7 +176,7 @@ export default function DashboardPage() {
           </div>
           <div>
             {activeTab === "shared" ? (
-            <Link className="rounded-md border border-line bg-white px-4 py-3 font-semibold" href="/slides/new">
+            <Link className="rounded-md border border-line bg-white px-4 py-3 font-semibold" href="/shared-slides/new">
               共有スライド作成
             </Link>
             ) : activeTab === "images" ? (
@@ -191,7 +191,7 @@ export default function DashboardPage() {
                 />
               </label>
             ) : (
-            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/decks/new">
+            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/presentations/new">
               新規作成
             </Link>
             )}
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {deck.visibility === "public" ? (
-                      <Link className="rounded-md border border-line px-3 py-2 text-sm font-semibold" href={`/p/${deck.slug}`} target="_blank">
+                      <Link className="rounded-md border border-line px-3 py-2 text-sm font-semibold" href={`/view/${deck.slug}`} target="_blank">
                         閲覧
                       </Link>
                     ) : null}
@@ -247,7 +247,7 @@ export default function DashboardPage() {
                     >
                       削除
                     </button>
-                    <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/decks/${deck.id}/edit`}>
+                    <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/presentations/${deck.id}/edit`}>
                       編集
                     </Link>
                   </div>
@@ -259,7 +259,7 @@ export default function DashboardPage() {
         {activeTab === "decks" && !decks.length ? (
           <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
             <p className="mb-4 font-semibold text-stone-700">まだデッキがありません。</p>
-            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/decks/new">
+            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/presentations/new">
               最初のデッキを作成
             </Link>
           </div>
@@ -323,7 +323,7 @@ export default function DashboardPage() {
                     >
                       削除
                     </button>
-                    <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/slides/${slide.id}/edit`}>
+                    <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/shared-slides/${slide.id}/edit`}>
                       編集
                     </Link>
                   </div>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
         {activeTab === "shared" && !sharedSlides.length ? (
           <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
             <p className="mb-4 font-semibold text-stone-700">共有スライドはまだありません。</p>
-            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/slides/new">
+            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/shared-slides/new">
               共有スライドを作成
             </Link>
           </div>
