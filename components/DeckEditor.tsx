@@ -190,6 +190,16 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     }
   }
 
+  function insertLibrarySlideAfterCurrent(slide: LibrarySlide) {
+    const nextSlides = [...slides];
+    const insertIndex = safeActiveSlideIndex + 1;
+    nextSlides.splice(insertIndex, 0, slide.markdown.trim());
+    setMarkdown(joinEditableSlides(nextSlides));
+    setActiveSlideIndex(insertIndex);
+    setLibraryOpen(false);
+    setStatus(`「${slide.title}」を次のページに追加しました`);
+  }
+
   async function copyImageMarkdown(image: ImageLibraryItem) {
     setImageError(null);
     try {
@@ -490,6 +500,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     </div>
                     <button
                       className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
+                      onClick={() => insertLibrarySlideAfterCurrent(slide)}
+                      type="button"
+                    >
+                      次のページに追加
+                    </button>
+                    <button
+                      className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
                       onClick={() => copyLibrarySlide(slide)}
                       type="button"
                     >
