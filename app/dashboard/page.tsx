@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -39,7 +39,11 @@ function parseDashboardTab(value: string | null): DashboardTab {
   return "decks";
 }
 
-export default function DashboardPage() {
+function DashboardLoading() {
+  return <main className="p-6">Loading...</main>;
+}
+
+function DashboardContent() {
   const { user, loading, token } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -363,5 +367,13 @@ export default function DashboardPage() {
         ) : null}
       </main>
     </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
