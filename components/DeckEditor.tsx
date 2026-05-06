@@ -248,9 +248,6 @@ export function DeckEditor() {
               />
               公開
             </label>
-            <button className="h-10 rounded-md bg-mint px-4 font-semibold text-white" onClick={save} type="button">
-              保存
-            </button>
             <button
               className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
               onClick={() => setImageOpen(true)}
@@ -264,6 +261,9 @@ export function DeckEditor() {
               type="button"
             >
               共有スライド
+            </button>
+            <button className="h-10 rounded-md bg-mint px-4 font-semibold text-white" onClick={save} type="button">
+              保存
             </button>
           </div>
         </div>
