@@ -61,6 +61,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [images, setImages] = useState<ImageLibraryItem[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const slideCount = useMemo(() => splitSlides(markdown).length, [markdown]);
   const hasSeparator = useMemo(() => /\n---\s*(?:\n|$)/.test(markdown), [markdown]);
   const invalidSlideCount = slideCount !== 1 || hasSeparator;
@@ -124,6 +125,33 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     setMarkdown(`${markdown}${separator}${imageMarkdown}`);
     setImageOpen(false);
     setStatus(`「${image.filename}」を共有スライドに追加しました`);
+  }
+
+  async function uploadAndInsertImage(file: File | null) {
+    if (!file) return;
+    setUploadingImage(true);
+    setImageError(null);
+    try {
+      const idToken = await token();
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await fetch("/api/images", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("画像をアップロードできませんでした");
+      }
+      const data = (await response.json()) as { image: ImageLibraryItem };
+      setImages((currentImages) => [data.image, ...currentImages]);
+      setImageLoaded(true);
+      insertImage(data.image);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "画像をアップロードできませんでした");
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   async function copyImageMarkdown(image: ImageLibraryItem) {
@@ -258,9 +286,19 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
                 閉じる
               </button>
             </div>
-            <Link className="rounded-md bg-ink px-4 py-3 text-center text-sm font-semibold text-white" href="/dashboard">
-              画像ライブラリを開く
-            </Link>
+            <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+              アップロードして共有スライドに追加
+              <input
+                accept="image/*"
+                className="sr-only"
+                disabled={uploadingImage}
+                onChange={(event) => {
+                  uploadAndInsertImage(event.target.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+                type="file"
+              />
+            </label>
             {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
             <div className="grid gap-2">
               {images.length ? (
