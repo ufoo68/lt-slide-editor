@@ -5,8 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
+import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SlidePreview } from "@/components/SlidePreview";
-import { analyzeDeck, joinEditableSlides, splitEditableSlides } from "@/lib/markdown";
+import { analyzeDeck, joinEditableSlides, renderSlides, splitEditableSlides } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
 
 type Deck = {
@@ -97,6 +98,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [imageError, setImageError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
+  const [presentationPreviewOpen, setPresentationPreviewOpen] = useState(false);
   const [images, setImages] = useState<ImageLibraryItem[]>([]);
   const [librarySlides, setLibrarySlides] = useState<LibrarySlide[]>([]);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -104,6 +106,10 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
+  const presentationSlides = useMemo(
+    () => renderSlides(markdown).map((slide) => ({ index: slide.index, html: slide.html })),
+    [markdown],
+  );
   const warnings = useMemo(() => analyzeDeck(markdown), [markdown]);
   const slideCount = slides.length;
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
@@ -451,7 +457,16 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">Preview</h2>
-                <span className="text-sm font-semibold text-stone-600">ページ: {safeActiveSlideIndex + 1}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-stone-600">ページ: {safeActiveSlideIndex + 1}</span>
+                  <button
+                    className="h-9 rounded-md border border-line bg-white px-3 text-sm font-semibold"
+                    onClick={() => setPresentationPreviewOpen(true)}
+                    type="button"
+                  >
+                    発表表示
+                  </button>
+                </div>
               </div>
               <SlidePreview
                 activeIndex={safeActiveSlideIndex}
@@ -592,6 +607,17 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               )}
             </div>
           </aside>
+        </div>
+      ) : null}
+      {presentationPreviewOpen ? (
+        <div className="fixed inset-0 z-50 bg-ink">
+          <PublicSlideshow
+            initialActive={safeActiveSlideIndex}
+            onClose={() => setPresentationPreviewOpen(false)}
+            slides={presentationSlides}
+            title={title || "Untitled"}
+            updatedAt={deck ? new Date(deck.updatedAt).toLocaleDateString("ja-JP") : "編集中"}
+          />
         </div>
       ) : null}
     </>

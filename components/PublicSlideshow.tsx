@@ -9,13 +9,19 @@ type PublicSlide = {
 };
 
 type PublicSlideshowProps = {
+  initialActive?: number;
+  onClose?: () => void;
   title: string;
   updatedAt: string;
   slides: PublicSlide[];
 };
 
-export function PublicSlideshow({ title, updatedAt, slides }: PublicSlideshowProps) {
-  const [active, setActive] = useState(0);
+function clampSlideIndex(value: number, slideCount: number) {
+  return Math.min(Math.max(value, 0), Math.max(slideCount - 1, 0));
+}
+
+export function PublicSlideshow({ initialActive = 0, onClose, title, updatedAt, slides }: PublicSlideshowProps) {
+  const [active, setActive] = useState(() => clampSlideIndex(initialActive, slides.length));
   const [isFullscreen, setIsFullscreen] = useState(false);
   const current = slides[Math.min(active, Math.max(slides.length - 1, 0))];
   const progress = useMemo(() => {
@@ -43,8 +49,20 @@ export function PublicSlideshow({ title, updatedAt, slides }: PublicSlideshowPro
     await document.exitFullscreen();
   }, []);
 
+  const close = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+    onClose?.();
+  }, [onClose]);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && onClose) {
+        event.preventDefault();
+        close();
+        return;
+      }
       if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
         event.preventDefault();
         goNext();
@@ -69,7 +87,7 @@ export function PublicSlideshow({ title, updatedAt, slides }: PublicSlideshowPro
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goNext, goPrevious, slides.length, toggleFullscreen]);
+  }, [close, goNext, goPrevious, onClose, slides.length, toggleFullscreen]);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -97,6 +115,11 @@ export function PublicSlideshow({ title, updatedAt, slides }: PublicSlideshowPro
             <p className="text-xs font-semibold text-white/55">Updated {updatedAt}</p>
           </div>
           <div className="flex items-center gap-2">
+            {onClose ? (
+              <button className="h-10 rounded-md border border-white/20 px-3 text-sm font-bold" onClick={close} type="button">
+                閉じる
+              </button>
+            ) : null}
             <button
               aria-label="前のスライド"
               className="h-10 min-w-10 rounded-md border border-white/20 px-3 text-sm font-bold disabled:opacity-35"
