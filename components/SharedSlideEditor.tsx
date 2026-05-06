@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { SlidePreview } from "@/components/SlidePreview";
 import { useAuth } from "@/components/AuthProvider";
 import { splitSlides } from "@/lib/markdown";
+import { insertTextareaTab } from "@/lib/textarea";
 
 const initialMarkdown = `# 自己紹介
 
@@ -255,6 +256,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             </div>
             <textarea
               className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
               onChange={(event) => setMarkdown(event.target.value)}
               spellCheck={false}
               value={markdown}

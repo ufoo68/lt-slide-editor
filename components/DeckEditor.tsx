@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
 import { SlidePreview } from "@/components/SlidePreview";
 import { analyzeDeck, joinEditableSlides, splitEditableSlides } from "@/lib/markdown";
+import { insertTextareaTab } from "@/lib/textarea";
 
 type Deck = {
   id: string;
@@ -426,6 +427,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             {editMode === "page" ? (
               <textarea
                 className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+                onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
                 onChange={(event) => updateActiveSlide(event.target.value)}
                 spellCheck={false}
                 value={activeSlideMarkdown}
@@ -433,6 +435,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             ) : (
               <textarea
                 className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+                onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
                 onChange={(event) => setMarkdown(event.target.value)}
                 spellCheck={false}
                 value={markdown}
