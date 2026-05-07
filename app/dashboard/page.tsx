@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Button, Card, Chip, Tabs, Tooltip } from "@heroui/react";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { useAuth } from "@/components/AuthProvider";
@@ -220,13 +221,13 @@ function DashboardContent() {
             <h1 className="text-3xl font-black">スライド一覧</h1>
             <p className="mt-1 text-sm text-stone-600">{user.email}</p>
           </div>
-          <div>
+          <div className="flex justify-end">
             {activeTab === "shared" ? (
-            <Link className="rounded-md border border-line bg-white px-4 py-3 font-semibold" href="/shared-slides/new">
-              共有スライド作成
+            <Link href="/shared-slides/new">
+              <Button variant="primary">共有スライド作成</Button>
             </Link>
             ) : activeTab === "images" ? (
-              <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-3 font-semibold text-white">
+              <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
                 画像アップロード
                 <input
                   accept="image/*"
@@ -237,98 +238,100 @@ function DashboardContent() {
                 />
               </label>
             ) : (
-            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/presentations/new">
-              新規作成
+            <Link href="/presentations/new">
+              <Button variant="primary">発表用スライド作成</Button>
             </Link>
             )}
           </div>
         </div>
-        <div className="mb-5 flex rounded-md border border-line bg-white p-1">
-          <button
-            className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "decks" ? "bg-ink text-white" : ""}`}
-            onClick={() => changeTab("decks")}
-            type="button"
-          >
-            発表用スライド
-          </button>
-          <button
-            className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "images" ? "bg-ink text-white" : ""}`}
-            onClick={() => changeTab("images")}
-            type="button"
-          >
-            画像
-          </button>
-          <button
-            className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${activeTab === "shared" ? "bg-ink text-white" : ""}`}
-            onClick={() => changeTab("shared")}
-            type="button"
-          >
-            共有スライド
-          </button>
-        </div>
+        <Tabs
+          aria-label="一覧カテゴリ"
+          className="mb-5"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => changeTab(key as DashboardTab)}
+        >
+          <Tabs.List className="rounded-md border border-line bg-white p-1">
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="decks">
+              発表用スライド
+            </Tabs.Tab>
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="images">
+              画像
+            </Tabs.Tab>
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="shared">
+              共有スライド
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
         {error ? <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         {listLoading ? <LoadingBlock label="一覧を読み込み中..." /> : null}
         {!listLoading && activeTab === "decks" && decks.length ? (
           <div className="grid gap-3">
             {decks.map((deck) => (
-              <article className="rounded-lg border border-line bg-white p-4 shadow-panel" key={deck.id}>
+              <Card className="border border-line bg-white/90 shadow-panel" key={deck.id}>
+                <Card.Content>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-black">{deck.title}</h2>
-                    <p className="mt-1 text-sm text-stone-600">
-                      {deck.visibility === "public" ? "公開" : "非公開"} / 更新:{" "}
-                      {new Date(deck.updatedAt).toLocaleString("ja-JP")}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-600">
+                      <Chip color={deck.visibility === "public" ? "accent" : "default"} size="sm" variant="soft">
+                        {deck.visibility === "public" ? "公開" : "非公開"}
+                      </Chip>
+                      <span>更新: {new Date(deck.updatedAt).toLocaleString("ja-JP")}</span>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {deck.visibility === "public" ? (
-                      <Link className="rounded-md border border-line px-3 py-2 text-sm font-semibold" href={`/view/${deck.slug}`} target="_blank">
-                        閲覧
+                      <Link href={`/view/${deck.slug}`} target="_blank">
+                        <Button size="sm" variant="outline">閲覧</Button>
                       </Link>
                     ) : null}
-                    <button
-                      className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                      disabled={busy}
-                      onClick={() => deleteDeck(deck.id)}
-                      type="button"
+                    <Button
+                      isDisabled={busy}
+                      size="sm"
+                      variant="outline"
+                      onPress={() => deleteDeck(deck.id)}
                     >
                       削除
-                    </button>
-                    <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/presentations/${deck.id}/edit`}>
-                      編集
+                    </Button>
+                    <Link href={`/presentations/${deck.id}/edit`}>
+                      <Button size="sm" variant="primary">編集</Button>
                     </Link>
                   </div>
                 </div>
-              </article>
+                </Card.Content>
+              </Card>
             ))}
           </div>
         ) : null}
         {!listLoading && activeTab === "decks" && !decks.length ? (
-          <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
+          <Card className="border border-dashed border-line bg-white/80">
+            <Card.Content className="items-center p-10 text-center">
             <p className="mb-4 font-semibold text-stone-700">まだデッキがありません。</p>
-            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/presentations/new">
-              最初のデッキを作成
+            <Link href="/presentations/new">
+              <Button variant="primary">発表用スライド作成</Button>
             </Link>
-          </div>
+            </Card.Content>
+          </Card>
         ) : null}
         {!listLoading && activeTab === "images" && images.length ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {images.map((image) => (
-              <article className="rounded-lg border border-line bg-white p-4 shadow-panel" key={image.id}>
-                <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img alt={image.filename} className="h-full w-full object-contain" src={image.url} />
-                </div>
+              <Card className="border border-line bg-white/90 shadow-panel" key={image.id}>
+                <Card.Content>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img alt={image.filename} className="aspect-video w-full rounded-lg bg-paper object-contain" src={image.url} />
                 <h2 className="mt-3 truncate text-base font-black">{image.filename}</h2>
                 <p className="mt-1 text-sm text-stone-600">{Math.ceil(image.size / 1024)} KB</p>
-                <div className="mt-3 flex items-center rounded-md bg-stone-100">
-                  <code className="min-w-0 flex-1 truncate p-2 text-xs">{image.markdown}</code>
-                  <button
+                <div className="mt-3 flex items-center rounded-lg bg-stone-100">
+                  <code className="min-w-0 flex-1 truncate bg-transparent p-2 text-xs">{image.markdown}</code>
+                  <Tooltip>
+                  <Button
+                    isIconOnly
                     aria-label={`${image.filename} のMarkdownをコピー`}
-                    className="mr-1 grid h-8 w-8 place-items-center rounded border border-transparent text-stone-600 hover:border-line hover:bg-white hover:text-ink"
-                    onClick={() => copyImageMarkdown(image)}
-                    title="Markdownをコピー"
-                    type="button"
+                    className="mr-1"
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => copyImageMarkdown(image)}
                   >
                     {copiedImageId === image.id ? (
                       <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -340,25 +343,30 @@ function DashboardContent() {
                         <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
                       </svg>
                     )}
-                  </button>
+                  </Button>
+                  <Tooltip.Content>Markdownをコピー</Tooltip.Content>
+                  </Tooltip>
                 </div>
-                <button
-                  className="mt-3 rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => deleteImage(image.id)}
-                  type="button"
+                <Button
+                  className="mt-3 w-fit"
+                  isDisabled={busy}
+                  size="sm"
+                  variant="outline"
+                  onPress={() => deleteImage(image.id)}
                 >
                   削除
-                </button>
-              </article>
+                </Button>
+                </Card.Content>
+              </Card>
             ))}
           </div>
         ) : null}
         {!listLoading && activeTab === "images" && !images.length ? (
-          <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
+          <Card className="border border-dashed border-line bg-white/80">
+            <Card.Content className="items-center p-10 text-center">
             <p className="mb-4 font-semibold text-stone-700">画像はまだありません。</p>
-            <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-3 font-semibold text-white">
-              最初の画像をアップロード
+            <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
+              画像アップロード
               <input
                 accept="image/*"
                 className="sr-only"
@@ -367,12 +375,14 @@ function DashboardContent() {
                 type="file"
               />
             </label>
-          </div>
+            </Card.Content>
+          </Card>
         ) : null}
         {!listLoading && activeTab === "shared" && sharedSlides.length ? (
           <div className="grid gap-3">
             {sharedSlides.map((slide) => (
-              <article className="rounded-lg border border-line bg-white p-4 shadow-panel" key={slide.id}>
+              <Card className="border border-line bg-white/90 shadow-panel" key={slide.id}>
+                <Card.Content>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-xl font-black">{slide.title}</h2>
@@ -382,30 +392,33 @@ function DashboardContent() {
                     <p className="mt-2 truncate text-sm text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ")}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      className="rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                      disabled={busy}
-                      onClick={() => deleteSharedSlide(slide.id)}
-                      type="button"
+                    <Button
+                      isDisabled={busy}
+                      size="sm"
+                      variant="outline"
+                      onPress={() => deleteSharedSlide(slide.id)}
                     >
                       削除
-                    </button>
-                    <Link className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`/shared-slides/${slide.id}/edit`}>
-                      編集
+                    </Button>
+                    <Link href={`/shared-slides/${slide.id}/edit`}>
+                      <Button size="sm" variant="primary">編集</Button>
                     </Link>
                   </div>
                 </div>
-              </article>
+                </Card.Content>
+              </Card>
             ))}
           </div>
         ) : null}
         {!listLoading && activeTab === "shared" && !sharedSlides.length ? (
-          <div className="rounded-lg border border-dashed border-line bg-white p-10 text-center">
+          <Card className="border border-dashed border-line bg-white/80">
+            <Card.Content className="items-center p-10 text-center">
             <p className="mb-4 font-semibold text-stone-700">共有スライドはまだありません。</p>
-            <Link className="rounded-md bg-mint px-4 py-3 font-semibold text-white" href="/shared-slides/new">
-              共有スライドを作成
+            <Link href="/shared-slides/new">
+              <Button variant="primary">共有スライド作成</Button>
             </Link>
-          </div>
+            </Card.Content>
+          </Card>
         ) : null}
       </main>
     </>

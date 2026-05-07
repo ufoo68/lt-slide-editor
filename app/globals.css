@@ -1,8 +1,16 @@
 @import "highlight.js/styles/github-dark.css";
+@import "tailwindcss";
+@import "@heroui/styles";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-ink: #161616;
+  --color-paper: #f7f5ef;
+  --color-line: #d8d4ca;
+  --color-mint: #2f7d6d;
+  --color-coral: #ca5c46;
+  --color-steel: #3f5f7f;
+  --shadow-panel: 0 10px 28px rgba(22, 22, 22, 0.08);
+}
 
 :root {
   color-scheme: light;
@@ -14,7 +22,7 @@
 
 body {
   margin: 0;
-  background: #f7f5ef;
+  background: #f6f4ee;
   color: #161616;
 }
 

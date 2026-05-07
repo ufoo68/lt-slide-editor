@@ -2,6 +2,7 @@
 
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
+import { Button, Card, Input, Tabs } from "@heroui/react";
 import { useAuth } from "@/components/AuthProvider";
 import { getClientAuth, getGoogleProvider } from "@/lib/firebase-client";
 
@@ -15,12 +16,14 @@ export function LoginPanel() {
 
   if (!configured) {
     return (
-      <div className="w-full max-w-md rounded-lg border border-line bg-white p-5 shadow-panel">
-        <h2 className="text-lg font-black">Firebase設定が必要です</h2>
-        <p className="mt-2 text-sm leading-6 text-stone-700">
-          Cloud Runの環境変数に `NEXT_PUBLIC_FIREBASE_API_KEY` などのFirebase Webアプリ設定を入れて、再デプロイしてください。
-        </p>
-      </div>
+      <Card className="w-full max-w-md border border-line bg-white/90 shadow-panel">
+        <Card.Content className="p-6">
+          <h2 className="text-lg font-black">Firebase設定が必要です</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-700">
+            Cloud Runの環境変数に `NEXT_PUBLIC_FIREBASE_API_KEY` などのFirebase Webアプリ設定を入れて、再デプロイしてください。
+          </p>
+        </Card.Content>
+      </Card>
     );
   }
 
@@ -54,60 +57,48 @@ export function LoginPanel() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-line bg-white p-5 shadow-panel">
-      <div className="mb-4 flex rounded-md border border-line p-1">
-        <button
-          className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${mode === "signin" ? "bg-ink text-white" : ""}`}
-          onClick={() => setMode("signin")}
-          type="button"
-        >
-          ログイン
-        </button>
-        <button
-          className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${mode === "signup" ? "bg-ink text-white" : ""}`}
-          onClick={() => setMode("signup")}
-          type="button"
-        >
-          新規登録
-        </button>
-      </div>
-      <label className="mb-3 block text-sm font-semibold">
+    <Card className="w-full max-w-md border border-line bg-white/90 shadow-panel">
+      <Card.Content className="gap-4 p-5">
+      <Tabs
+        aria-label="認証方法"
+        selectedKey={mode}
+        onSelectionChange={(key) => setMode(key === "signup" ? "signup" : "signin")}
+      >
+        <Tabs.List className="rounded-md border border-line bg-white p-1">
+          <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="signin">
+            ログイン
+          </Tabs.Tab>
+          <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="signup">
+            新規登録
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+      <label className="grid gap-1 text-sm font-semibold">
         メール
-        <input
-          className="mt-1 h-11 w-full rounded-md border border-line px-3"
-          onChange={(event) => setEmail(event.target.value)}
-          type="email"
-          value={email}
-        />
+        <Input onChange={(event) => setEmail(event.target.value)} type="email" value={email} variant="primary" />
       </label>
-      <label className="mb-4 block text-sm font-semibold">
+      <label className="grid gap-1 text-sm font-semibold">
         パスワード
-        <input
-          className="mt-1 h-11 w-full rounded-md border border-line px-3"
-          onChange={(event) => setPassword(event.target.value)}
-          type="password"
-          value={password}
-        />
+        <Input onChange={(event) => setPassword(event.target.value)} type="password" value={password} variant="primary" />
       </label>
       {error ? <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
       <div className="grid gap-2">
-        <button
-          className="h-11 rounded-md bg-mint px-4 font-semibold text-white disabled:opacity-50"
-          disabled={busy || !email || !password}
-          onClick={submit}
-          type="button"
+        <Button
+          isDisabled={busy || !email || !password}
+          variant="primary"
+          onPress={submit}
         >
           {mode === "signin" ? "メールでログイン" : "アカウント作成"}
-        </button>
-        <button
-          className="h-11 rounded-md border border-line bg-white px-4 font-semibold disabled:opacity-50"
-          disabled={busy}
-          onClick={google}
-          type="button"
+        </Button>
+        <Button
+          isDisabled={busy}
+          variant="outline"
+          onPress={google}
         >
           Googleで続ける
-        </button>
+        </Button>
       </div>
-    </div>
+      </Card.Content>
+    </Card>
   );
 }

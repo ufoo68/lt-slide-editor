@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@heroui/react";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { SlidePreview } from "@/components/SlidePreview";
@@ -238,7 +239,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <Link className="text-sm font-semibold text-steel" href="/dashboard">
+            <Link className="text-sm font-semibold text-primary" href="/dashboard">
               Dashboard
             </Link>
             <input
@@ -248,21 +249,16 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             />
           </div>
           <div className="flex gap-2">
-            <button
-              className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
-              onClick={() => setImageOpen(true)}
-              type="button"
-            >
+            <Button variant="outline" onPress={() => setImageOpen(true)}>
               画像
-            </button>
-            <button
-              className="h-10 rounded-md bg-mint px-4 font-semibold text-white disabled:opacity-50"
-              disabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
-              onClick={saveSlide}
-              type="button"
+            </Button>
+            <Button
+              isDisabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
+              variant="primary"
+              onPress={saveSlide}
             >
               保存
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -313,7 +309,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
               </button>
             </div>
             <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              アップロードして共有スライドに追加
+              画像アップロード
               <input
                 accept="image/*"
                 className="sr-only"

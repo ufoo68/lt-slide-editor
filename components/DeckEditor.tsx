@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Button, Card, Input, Switch, Tabs } from "@heroui/react";
 import { useAuth } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
@@ -387,7 +388,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <Link className="text-sm font-semibold text-steel" href="/dashboard">
+            <Link className="text-sm font-semibold text-primary" href="/dashboard">
               Dashboard
             </Link>
             <input
@@ -398,14 +399,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {deck?.visibility === "public" ? (
-              <Link className="rounded-md border border-line px-3 py-2 text-sm font-semibold" href={`/view/${deck.slug}`} target="_blank">
-                公開URLを開く
+              <Link href={`/view/${deck.slug}`} target="_blank">
+                <Button size="sm" variant="outline">公開URLを開く</Button>
               </Link>
             ) : null}
             <label className="flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold">
               発表時間
               <input
-                className="h-8 w-16 rounded border border-line px-2 text-right outline-mint"
+                className="h-8 w-16 bg-transparent text-right outline-none"
                 max={180}
                 min={1}
                 onChange={(event) => setPresentationMinutes(Math.max(1, Math.min(180, Number(event.target.value) || 1)))}
@@ -414,36 +415,38 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               />
               分
             </label>
-            <label className="flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold">
-              <input
-                checked={visibility === "public"}
-                onChange={(event) => setVisibility(event.target.checked ? "public" : "private")}
-                type="checkbox"
-              />
+            <Switch
+              className="flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold"
+              isSelected={visibility === "public"}
+              size="sm"
+              onChange={(selected) => setVisibility(selected ? "public" : "private")}
+            >
+              <Switch.Control
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  visibility === "public" ? "bg-mint" : "bg-stone-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-[left] ${
+                    visibility === "public" ? "left-[18px]" : "left-0.5"
+                  }`}
+                />
+              </Switch.Control>
               公開
-            </label>
-            <button
-              className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
-              onClick={() => setImageOpen(true)}
-              type="button"
-            >
+            </Switch>
+            <Button variant="outline" onPress={() => setImageOpen(true)}>
               画像
-            </button>
-            <button
-              className="h-10 rounded-md border border-line bg-white px-4 font-semibold"
-              onClick={() => setLibraryOpen(true)}
-              type="button"
-            >
+            </Button>
+            <Button variant="outline" onPress={() => setLibraryOpen(true)}>
               共有スライド
-            </button>
-            <button
-              className="h-10 rounded-md bg-mint px-4 font-semibold text-white disabled:opacity-50"
-              disabled={busy || !title.trim() || !hasUnsavedChanges}
-              onClick={save}
-              type="button"
+            </Button>
+            <Button
+              isDisabled={busy || !title.trim() || !hasUnsavedChanges}
+              variant="primary"
+              onPress={save}
             >
               保存
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -458,45 +461,43 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} slides`}
               </span>
             </div>
-            <div className="flex rounded-md border border-line bg-white p-1">
-              <button
-                className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${editMode === "page" ? "bg-ink text-white" : ""}`}
-                onClick={() => setEditMode("page")}
-                type="button"
-              >
-                ページ編集
-              </button>
-              <button
-                className={`h-10 flex-1 rounded px-3 text-sm font-semibold ${editMode === "full" ? "bg-ink text-white" : ""}`}
-                onClick={() => setEditMode("full")}
-                type="button"
-              >
-                Full Markdown
-              </button>
-            </div>
+            <Tabs
+              aria-label="編集モード"
+              selectedKey={editMode}
+              onSelectionChange={(key) => setEditMode(key === "full" ? "full" : "page")}
+            >
+              <Tabs.List className="rounded-md border border-line bg-white p-1">
+                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="page">
+                  ページ編集
+                </Tabs.Tab>
+                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="full">
+                  Full Markdown
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs>
             {editMode === "page" ? (
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex gap-2">
-                  <button
-                    className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold disabled:opacity-40"
-                    disabled={safeActiveSlideIndex === 0}
-                    onClick={goPreviousSlide}
-                    type="button"
+                  <Button
+                    isDisabled={safeActiveSlideIndex === 0}
+                    size="sm"
+                    variant="outline"
+                    onPress={goPreviousSlide}
                   >
                     前のページへ
-                  </button>
-                  <button
-                    className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold disabled:opacity-40"
-                    disabled={!activeSlideMarkdown.trim()}
-                    onClick={goNextSlide}
-                    type="button"
+                  </Button>
+                  <Button
+                    isDisabled={!activeSlideMarkdown.trim()}
+                    size="sm"
+                    variant="outline"
+                    onPress={goNextSlide}
                   >
                     次のページへ
-                  </button>
+                  </Button>
                 </div>
-                <button className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold" onClick={deleteActiveSlide} type="button">
+                <Button size="sm" variant="outline" onPress={deleteActiveSlide}>
                   このページを削除
-                </button>
+                </Button>
               </div>
             ) : null}
             {editMode === "page" ? (
@@ -523,13 +524,9 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">Preview</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-stone-600">ページ: {safeActiveSlideIndex + 1}</span>
-                  <button
-                    className="h-9 rounded-md border border-line bg-white px-3 text-sm font-semibold"
-                    onClick={() => setPresentationPreviewOpen(true)}
-                    type="button"
-                  >
+                  <Button size="sm" variant="outline" onPress={() => setPresentationPreviewOpen(true)}>
                     発表表示
-                  </button>
+                  </Button>
                 </div>
               </div>
               <SlidePreview
@@ -540,7 +537,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 onActiveSlideMarkdownChange={updateActiveSlide}
               />
             </div>
-            <div className="rounded-lg border border-line bg-white p-4">
+            <Card className="border border-line bg-white/90 shadow-panel">
+              <Card.Content>
               <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">LTチェック</h2>
               {warnings.length ? (
                 <ul className="grid gap-2">
@@ -554,7 +552,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               ) : (
                 <p className="text-sm text-stone-600">今のところ大きな警告はありません。</p>
               )}
-            </div>
+              </Card.Content>
+            </Card>
           </aside>
         </section>
       </main>
@@ -573,7 +572,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 閉じる
               </button>
             </div>
-            <Link className="rounded-md bg-ink px-4 py-3 text-center text-sm font-semibold text-white" href="/shared-slides/new">
+            <Link className="rounded-md bg-mint px-4 py-3 text-center text-sm font-semibold text-white" href="/shared-slides/new">
               共有スライド作成
             </Link>
             {libraryError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
@@ -627,7 +626,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               </button>
             </div>
             <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              アップロードして現在のページに追加
+              画像アップロード
               <input
                 accept="image/*"
                 className="sr-only"
