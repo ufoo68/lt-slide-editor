@@ -1,5 +1,9 @@
 # LT Slide Editor
 
+<p align="center">
+  <img src="./public/lt-slide-editor-icon.svg" alt="LT Slide Editor icon" width="96" height="96">
+</p>
+
 ## 日本語
 
 MarkdownでLT向けスライドを作るNext.js App Routerアプリです。Firebase Authenticationでログインし、Prisma経由でPostgreSQLにデッキを保存し、公開デッキは `/view/[slug]` で閲覧できます。アプリ内の表示言語はHeaderの **Language mode** で日本語/Englishを切り替えられます。

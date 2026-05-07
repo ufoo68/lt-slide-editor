@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { Button } from "@heroui/react";
 import { getClientAuth } from "@/lib/firebase-client";
 import { useAuth } from "@/components/AuthProvider";
+import { Logo } from "@/components/Logo";
 import { useLanguage } from "@/lib/i18n";
+import Link from "next/link";
 
 export function Header() {
   const { user } = useAuth();
@@ -14,9 +15,7 @@ export function Header() {
   return (
     <header className="border-b border-line/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link className="text-lg font-black tracking-normal text-foreground" href="/">
-          LT Slide Editor
-        </Link>
+        <Logo />
         {user ? (
           <nav className="flex flex-wrap items-center justify-end gap-2">
             <label className="flex h-9 items-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-semibold">
