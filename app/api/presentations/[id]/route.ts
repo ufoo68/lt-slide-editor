@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 const updateDeckSchema = z.object({
   title: z.string().trim().min(1).max(120),
   markdown: z.string(),
+  presentationMinutes: z.number().int().min(1).max(180),
   visibility: z.enum(["private", "public"]),
 });
 
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         title: true,
         slug: true,
         markdown: true,
+        presentationMinutes: true,
         visibility: true,
         updatedAt: true,
       },
@@ -63,6 +65,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       data: {
         title: input.title,
         markdown: input.markdown,
+        presentationMinutes: input.presentationMinutes,
         visibility: input.visibility,
         versions: current.markdown === input.markdown ? undefined : { create: { markdown: input.markdown } },
       },
@@ -71,6 +74,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
         title: true,
         slug: true,
         markdown: true,
+        presentationMinutes: true,
         visibility: true,
         updatedAt: true,
       },

@@ -1,0 +1,1 @@
+ALTER TABLE "Deck" ADD COLUMN "presentationMinutes" INTEGER NOT NULL DEFAULT 5;

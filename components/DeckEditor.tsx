@@ -16,6 +16,7 @@ type Deck = {
   title: string;
   slug: string;
   markdown: string;
+  presentationMinutes: number;
   visibility: "private" | "public";
   updatedAt: string;
 };
@@ -42,6 +43,7 @@ type DeckEditorProps = {
 
 type SavedDeckState = {
   markdown: string;
+  presentationMinutes: number;
   title: string;
   visibility: "private" | "public";
 };
@@ -81,6 +83,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const initialSavedState = useMemo<SavedDeckState>(
     () => ({
       markdown: mode === "new" ? initialMarkdown : "",
+      presentationMinutes: 5,
       title: mode === "new" ? "新しいLT" : "",
       visibility: "private",
     }),
@@ -89,6 +92,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [deck, setDeck] = useState<Deck | null>(null);
   const [title, setTitle] = useState(mode === "new" ? "新しいLT" : "");
   const [markdown, setMarkdown] = useState(mode === "new" ? initialMarkdown : "");
+  const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [editMode, setEditMode] = useState<"page" | "full">("page");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
@@ -118,7 +122,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const slideCount = slides.length;
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
   const activeSlideMarkdown = slides[safeActiveSlideIndex] ?? "";
-  const hasUnsavedChanges = title !== savedState.title || markdown !== savedState.markdown || visibility !== savedState.visibility;
+  const hasUnsavedChanges =
+    title !== savedState.title ||
+    markdown !== savedState.markdown ||
+    presentationMinutes !== savedState.presentationMinutes ||
+    visibility !== savedState.visibility;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -144,10 +152,12 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         setDeck(data.deck);
         setTitle(data.deck.title);
         setMarkdown(data.deck.markdown);
+        setPresentationMinutes(data.deck.presentationMinutes);
         setActiveSlideIndex(0);
         setVisibility(data.deck.visibility);
         setSavedState({
           markdown: data.deck.markdown,
+          presentationMinutes: data.deck.presentationMinutes,
           title: data.deck.title,
           visibility: data.deck.visibility,
         });
@@ -333,7 +343,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           Authorization: `Bearer ${idToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, markdown: normalizedMarkdown, visibility }),
+        body: JSON.stringify({ title, markdown: normalizedMarkdown, presentationMinutes, visibility }),
       });
       if (!response.ok) {
         throw new Error("保存に失敗しました");
@@ -344,6 +354,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       setActiveSlideIndex(nextActiveSlideIndex);
       setSavedState({
         markdown: data.deck.markdown,
+        presentationMinutes: data.deck.presentationMinutes,
         title: data.deck.title,
         visibility: data.deck.visibility,
       });
@@ -391,6 +402,18 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 公開URLを開く
               </Link>
             ) : null}
+            <label className="flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold">
+              発表時間
+              <input
+                className="h-8 w-16 rounded border border-line px-2 text-right outline-mint"
+                max={180}
+                min={1}
+                onChange={(event) => setPresentationMinutes(Math.max(1, Math.min(180, Number(event.target.value) || 1)))}
+                type="number"
+                value={presentationMinutes}
+              />
+              分
+            </label>
             <label className="flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold">
               <input
                 checked={visibility === "public"}
@@ -657,6 +680,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           <PublicSlideshow
             initialActive={safeActiveSlideIndex}
             onClose={() => setPresentationPreviewOpen(false)}
+            presentationMinutes={presentationMinutes}
             slides={presentationSlides}
             title={title || "Untitled"}
             updatedAt={deck ? new Date(deck.updatedAt).toLocaleDateString("ja-JP") : "編集中"}

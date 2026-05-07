@@ -7,6 +7,7 @@ import { uniqueDeckSlug } from "@/lib/slug";
 const createDeckSchema = z.object({
   title: z.string().trim().min(1).max(120),
   markdown: z.string().default("# 新しいLT\n\n- ここに話すことを書く"),
+  presentationMinutes: z.number().int().min(1).max(180).default(5),
   visibility: z.enum(["private", "public"]).default("private"),
 });
 
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
         id: true,
         title: true,
         slug: true,
+        presentationMinutes: true,
         visibility: true,
         createdAt: true,
         updatedAt: true,
@@ -50,6 +52,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         title: input.title,
         markdown: input.markdown,
+        presentationMinutes: input.presentationMinutes,
         visibility: input.visibility,
         slug,
         versions: {
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest) {
         title: true,
         slug: true,
         markdown: true,
+        presentationMinutes: true,
         visibility: true,
         updatedAt: true,
       },

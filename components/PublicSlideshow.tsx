@@ -11,6 +11,7 @@ type PublicSlide = {
 type PublicSlideshowProps = {
   initialActive?: number;
   onClose?: () => void;
+  presentationMinutes?: number;
   title: string;
   updatedAt: string;
   slides: PublicSlide[];
@@ -20,10 +21,28 @@ function clampSlideIndex(value: number, slideCount: number) {
   return Math.min(Math.max(value, 0), Math.max(slideCount - 1, 0));
 }
 
-export function PublicSlideshow({ initialActive = 0, onClose, title, updatedAt, slides }: PublicSlideshowProps) {
+function formatRemainingTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export function PublicSlideshow({
+  initialActive = 0,
+  onClose,
+  presentationMinutes = 5,
+  title,
+  updatedAt,
+  slides,
+}: PublicSlideshowProps) {
   const [active, setActive] = useState(() => clampSlideIndex(initialActive, slides.length));
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const totalSeconds = Math.max(1, Math.round(presentationMinutes)) * 60;
+  const [remainingSeconds, setRemainingSeconds] = useState(totalSeconds);
+  const [timerEndsAt, setTimerEndsAt] = useState<number | null>(null);
   const current = slides[Math.min(active, Math.max(slides.length - 1, 0))];
+  const timerRunning = timerEndsAt !== null;
+  const displayedRemainingSeconds = timerRunning || remainingSeconds === 0 ? remainingSeconds : totalSeconds;
   const progress = useMemo(() => {
     if (!slides.length) {
       return 0;
@@ -40,6 +59,16 @@ export function PublicSlideshow({ initialActive = 0, onClose, title, updatedAt, 
     setActive((value) => Math.max(0, value - 1));
   }, []);
 
+  const startTimer = useCallback(() => {
+    setRemainingSeconds(totalSeconds);
+    setTimerEndsAt(Date.now() + totalSeconds * 1000);
+  }, [totalSeconds]);
+
+  const resetTimer = useCallback(() => {
+    setTimerEndsAt(null);
+    setRemainingSeconds(totalSeconds);
+  }, [totalSeconds]);
+
   const toggleFullscreen = useCallback(async () => {
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen();
@@ -48,6 +77,22 @@ export function PublicSlideshow({ initialActive = 0, onClose, title, updatedAt, 
 
     await document.exitFullscreen();
   }, []);
+
+  useEffect(() => {
+    if (timerEndsAt === null) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      const nextRemainingSeconds = Math.max(0, Math.ceil((timerEndsAt - Date.now()) / 1000));
+      setRemainingSeconds(nextRemainingSeconds);
+      if (nextRemainingSeconds === 0) {
+        setTimerEndsAt(null);
+      }
+    }, 250);
+
+    return () => window.clearInterval(timerId);
+  }, [timerEndsAt]);
 
   const close = useCallback(async () => {
     if (document.fullscreenElement) {
@@ -115,6 +160,20 @@ export function PublicSlideshow({ initialActive = 0, onClose, title, updatedAt, 
             <p className="text-xs font-semibold text-white/55">Updated {updatedAt}</p>
           </div>
           <div className="flex items-center gap-2">
+            <div
+              className={`flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-bold ${
+                displayedRemainingSeconds === 0 ? "border-coral bg-coral text-white" : "border-white/20"
+              }`}
+            >
+              <span className="tabular-nums">{formatRemainingTime(displayedRemainingSeconds)}</span>
+              <button
+                className="rounded bg-white px-2 py-1 text-xs font-black text-ink"
+                onClick={timerRunning ? resetTimer : startTimer}
+                type="button"
+              >
+                {timerRunning ? "リセット" : "スタート"}
+              </button>
+            </div>
             {onClose ? (
               <button className="h-10 rounded-md border border-white/20 px-3 text-sm font-bold" onClick={close} type="button">
                 閉じる

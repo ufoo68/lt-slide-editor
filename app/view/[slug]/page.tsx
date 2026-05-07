@@ -7,7 +7,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const deck = await prisma.deck.findFirst({
     where: { slug, visibility: "public" },
-    select: { title: true, markdown: true, updatedAt: true },
+    select: { title: true, markdown: true, presentationMinutes: true, updatedAt: true },
   });
 
   if (!deck) {
@@ -19,6 +19,7 @@ export default async function PublicDeckPage({ params }: { params: Promise<{ slu
   return (
     <PublicSlideshow
       slides={slides.map((slide) => ({ index: slide.index, html: slide.html }))}
+      presentationMinutes={deck.presentationMinutes}
       title={deck.title}
       updatedAt={new Date(deck.updatedAt).toLocaleDateString("ja-JP")}
     />

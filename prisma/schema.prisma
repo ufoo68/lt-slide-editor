@@ -37,6 +37,7 @@ model Deck {
   title      String
   slug       String         @unique
   markdown   String
+  presentationMinutes Int   @default(5)
   visibility DeckVisibility @default(private)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
