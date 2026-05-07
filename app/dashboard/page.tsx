@@ -52,6 +52,7 @@ function DashboardContent() {
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [images, setImages] = useState<ImageSummary[]>([]);
   const [sharedSlides, setSharedSlides] = useState<SharedSlideSummary[]>([]);
+  const [copiedImageId, setCopiedImageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [listLoading, setListLoading] = useState(true);
@@ -184,6 +185,17 @@ function DashboardContent() {
     }
   }
 
+  async function copyImageMarkdown(image: ImageSummary) {
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(image.markdown);
+      setCopiedImageId(image.id);
+      window.setTimeout(() => setCopiedImageId((currentId) => (currentId === image.id ? null : currentId)), 1200);
+    } catch {
+      setError("Markdownをコピーできませんでした");
+    }
+  }
+
   function changeTab(tab: DashboardTab) {
     const nextParams = new URLSearchParams(searchParams);
     if (tab === "decks") {
@@ -309,7 +321,27 @@ function DashboardContent() {
                 </div>
                 <h2 className="mt-3 truncate text-base font-black">{image.filename}</h2>
                 <p className="mt-1 text-sm text-stone-600">{Math.ceil(image.size / 1024)} KB</p>
-                <code className="mt-3 block truncate rounded-md bg-stone-100 p-2 text-xs">{image.markdown}</code>
+                <div className="mt-3 flex items-center rounded-md bg-stone-100">
+                  <code className="min-w-0 flex-1 truncate p-2 text-xs">{image.markdown}</code>
+                  <button
+                    aria-label={`${image.filename} のMarkdownをコピー`}
+                    className="mr-1 grid h-8 w-8 place-items-center rounded border border-transparent text-stone-600 hover:border-line hover:bg-white hover:text-ink"
+                    onClick={() => copyImageMarkdown(image)}
+                    title="Markdownをコピー"
+                    type="button"
+                  >
+                    {copiedImageId === image.id ? (
+                      <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    ) : (
+                      <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                        <rect height="14" rx="2" width="14" x="8" y="8" />
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
                 <button
                   className="mt-3 rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50"
                   disabled={busy}
