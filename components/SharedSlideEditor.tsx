@@ -134,7 +134,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   }, [imageLoaded, imageOpen, token, user]);
 
   function imageMarkdownWithLayout(image: ImageLibraryItem) {
-    return image.markdown.replace(/\)$/, ' "lt-image:x=29;y=33;w=42;h=34")');
+    return image.markdown;
   }
 
   function insertImage(image: ImageLibraryItem) {

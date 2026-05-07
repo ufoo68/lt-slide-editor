@@ -14,6 +14,18 @@ function apiError(error: unknown) {
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 }
 
+function escapeAttribute(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function imageMarkdown(image: { filename: string; id: string }) {
+  return `<img src="/api/images/${image.id}/file" alt="${escapeAttribute(image.filename)}" style="position:absolute;left:29%;top:33%;width:42%;height:34%;object-fit:contain;">`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request);
@@ -32,7 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       images: images.map((image) => ({
         ...image,
-        markdown: `![${image.filename}](/api/images/${image.id}/file)`,
+        markdown: imageMarkdown(image),
         url: `/api/images/${image.id}/file`,
       })),
     });
@@ -81,7 +93,7 @@ export async function POST(request: NextRequest) {
       {
         image: {
           ...image,
-          markdown: `![${image.filename}](/api/images/${image.id}/file)`,
+          markdown: imageMarkdown(image),
           url: `/api/images/${image.id}/file`,
         },
       },

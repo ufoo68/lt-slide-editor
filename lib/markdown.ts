@@ -22,7 +22,7 @@ export type SlideWarning = {
 };
 
 const md = new MarkdownIt({
-  html: false,
+  html: true,
   linkify: true,
   typographer: true,
   highlight(code, lang) {
@@ -57,12 +57,39 @@ function parseImageLayout(title: string | null) {
     return null;
   }
 
+  return normalizeImageLayout({ h, w, x, y });
+}
+
+function normalizeImageLayout(layout: { h: number; w: number; x: number; y: number }) {
   return {
-    h: Math.min(Math.max(h, 5), 100),
-    w: Math.min(Math.max(w, 5), 100),
-    x: Math.min(Math.max(x, 0), 95),
-    y: Math.min(Math.max(y, 0), 95),
+    h: Math.min(Math.max(layout.h, 5), 100),
+    w: Math.min(Math.max(layout.w, 5), 100),
+    x: Math.min(Math.max(layout.x, 0), 95),
+    y: Math.min(Math.max(layout.y, 0), 95),
   };
+}
+
+function parseImageStyle(style: string | undefined) {
+  const layout = Object.fromEntries(
+    (style ?? "")
+      .split(";")
+      .map((part) => part.split(":").map((value) => value.trim()))
+      .filter(([key, value]) => key && value)
+  );
+  const x = Number(layout.left?.replace(/%$/, ""));
+  const y = Number(layout.top?.replace(/%$/, ""));
+  const w = Number(layout.width?.replace(/%$/, ""));
+  const h = Number(layout.height?.replace(/%$/, ""));
+
+  if (![x, y, w, h].every(Number.isFinite)) {
+    return null;
+  }
+
+  return normalizeImageLayout({ h, w, x, y });
+}
+
+function imageStyle(layout: { h: number; w: number; x: number; y: number }) {
+  return `position:absolute;left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;object-fit:contain;`;
 }
 
 function escapeHtml(value: string) {
@@ -84,40 +111,61 @@ md.renderer.rules.image = (tokens, idx, options, env) => {
 
   const resolvedLayout = layout ?? { h: 34, w: 42, x: 29, y: 33 };
 
-  const style = `left:${resolvedLayout.x}%;top:${resolvedLayout.y}%;width:${resolvedLayout.w}%;height:${resolvedLayout.h}%;`;
   const titleAttr = title && !layout ? ` title="${escapeHtml(title)}"` : "";
   return [
     `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${titleAttr}`,
     ` class="slide-image-absolute"`,
     ` data-slide-image-index="${imageIndex}"`,
     ` data-image-layout="x=${resolvedLayout.x};y=${resolvedLayout.y};w=${resolvedLayout.w};h=${resolvedLayout.h}"`,
-    ` style="${style}">`,
+    ` style="${imageStyle(resolvedLayout)}">`,
   ].join("");
 };
 
-const sanitizeOptions: sanitizeHtml.IOptions = {
-  allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "h1", "h2", "pre", "code", "span"]),
-  allowedAttributes: {
-    ...sanitizeHtml.defaults.allowedAttributes,
-    a: ["href", "name", "target", "rel"],
-    img: ["src", "alt", "title", "class", "data-slide-image-index", "data-image-layout", "style"],
-    code: ["class"],
-    span: ["class"],
-    pre: ["class"],
-  },
-  allowedStyles: {
-    img: {
-      height: [/^\d+(?:\.\d+)?%$/],
-      left: [/^\d+(?:\.\d+)?%$/],
-      top: [/^\d+(?:\.\d+)?%$/],
-      width: [/^\d+(?:\.\d+)?%$/],
+function sanitizeOptions(): sanitizeHtml.IOptions {
+  let imageIndex = 0;
+
+  return {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "h1", "h2", "pre", "code", "span"]),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      a: ["href", "name", "target", "rel"],
+      img: ["src", "alt", "title", "class", "data-slide-image-index", "data-image-layout", "style"],
+      code: ["class"],
+      span: ["class"],
+      pre: ["class"],
     },
-  },
-  allowedSchemes: ["http", "https", "mailto", "data"],
-  transformTags: {
-    a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
-  },
-};
+    allowedStyles: {
+      img: {
+        height: [/^\d+(?:\.\d+)?%$/],
+        left: [/^\d+(?:\.\d+)?%$/],
+        "object-fit": [/^contain$/],
+        position: [/^absolute$/],
+        top: [/^\d+(?:\.\d+)?%$/],
+        width: [/^\d+(?:\.\d+)?%$/],
+      },
+    },
+    allowedSchemes: ["http", "https", "mailto", "data"],
+    transformTags: {
+      a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
+      img: (tagName, attribs) => {
+        const layout = parseImageStyle(attribs.style) ?? parseImageLayout(attribs.title ?? null) ?? { h: 34, w: 42, x: 29, y: 33 };
+        const nextImageIndex = imageIndex;
+        imageIndex += 1;
+
+        return {
+          tagName,
+          attribs: {
+            ...attribs,
+            class: [attribs.class, "slide-image-absolute"].filter(Boolean).join(" "),
+            "data-slide-image-index": String(nextImageIndex),
+            "data-image-layout": `x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`,
+            style: imageStyle(layout),
+          },
+        };
+      },
+    },
+  };
+}
 
 export function splitSlides(markdown: string) {
   return markdown
@@ -136,7 +184,7 @@ export function joinEditableSlides(slides: string[]) {
 }
 
 export function renderMarkdown(markdown: string) {
-  return sanitizeHtml(md.render(markdown, { imageIndex: 0 }), sanitizeOptions);
+  return sanitizeHtml(md.render(markdown, { imageIndex: 0 }), sanitizeOptions());
 }
 
 export function slideStats(markdown: string): SlideStats {

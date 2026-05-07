@@ -34,7 +34,7 @@ type ImageDragState = {
 
 type ImageResizeCorner = "nw" | "ne" | "sw" | "se";
 
-const imageMarkdownPattern = /!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)/g;
+const imageMarkdownPattern = /<img\b[^>]*>|!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)/g;
 const resizeCornerClasses = ["is-resize-nw", "is-resize-ne", "is-resize-sw", "is-resize-se"];
 
 function clamp(value: number, min: number, max: number) {
@@ -43,6 +43,18 @@ function clamp(value: number, min: number, max: number) {
 
 function formatPercent(value: number) {
   return Number(value.toFixed(2));
+}
+
+function escapeAttribute(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function imageStyle(layout: ImageLayout) {
+  return `position:absolute;left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;object-fit:contain;`;
 }
 
 function parseLayout(value: string | null): ImageLayout {
@@ -104,10 +116,15 @@ function updateMarkdownImageLayout(markdown: string, targetIndex: number, layout
     }
 
     index += 1;
-    const cleanTitle = (title ?? "").replace(/\s*\blt-image:[^\s"]+/g, "").trim();
-    const layoutTitle = `lt-image:x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`;
-    const nextTitle = cleanTitle ? `${cleanTitle} ${layoutTitle}` : layoutTitle;
-    return `![${alt}](${src} "${nextTitle}")`;
+    if (match.startsWith("<img")) {
+      const nextStyle = `style="${imageStyle(layout)}"`;
+      if (/\sstyle=(?:"[^"]*"|'[^']*')/i.test(match)) {
+        return match.replace(/\sstyle=(?:"[^"]*"|'[^']*')/i, ` ${nextStyle}`);
+      }
+      return match.replace(/\s*\/?>$/, ` ${nextStyle}>`);
+    }
+
+    return `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}" style="${imageStyle(layout)}">`;
   });
 }
 
