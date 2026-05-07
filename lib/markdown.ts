@@ -1,7 +1,6 @@
 import hljs from "highlight.js/lib/common";
 import MarkdownIt from "markdown-it";
 import sanitizeHtml from "sanitize-html";
-import type { Language } from "@/lib/i18n";
 
 export type Slide = {
   index: number;
@@ -14,12 +13,6 @@ export type SlideStats = {
   charCount: number;
   bulletCount: number;
   maxCodeLines: number;
-};
-
-export type SlideWarning = {
-  slideIndex?: number;
-  message: string;
-  severity: "info" | "warning";
 };
 
 const md = new MarkdownIt({
@@ -210,55 +203,4 @@ export function renderSlides(markdown: string): Slide[] {
     html: renderMarkdown(slide),
     stats: slideStats(slide),
   }));
-}
-
-export function analyzeDeck(markdown: string, language: Language = "ja"): SlideWarning[] {
-  const slides = splitSlides(markdown);
-  const warnings: SlideWarning[] = [];
-
-  if (slides.length > 18) {
-    warnings.push({
-      message:
-        language === "ja"
-          ? "10分LTにはスライド枚数が多めです。18枚以下を目安にすると話しやすくなります。"
-          : "This is a lot of slides for a 10-minute talk. Aim for 18 or fewer.",
-      severity: "warning",
-    });
-  }
-
-  slides.forEach((slide, index) => {
-    const stats = slideStats(slide);
-    if (stats.charCount > 240) {
-      warnings.push({
-        slideIndex: index + 1,
-        message:
-          language === "ja"
-            ? "1スライドの文字数が多めです。話す内容を口頭に寄せると見やすくなります。"
-            : "This slide has a lot of text. Move more detail into your spoken explanation.",
-        severity: "warning",
-      });
-    }
-    if (stats.bulletCount > 7) {
-      warnings.push({
-        slideIndex: index + 1,
-        message:
-          language === "ja"
-            ? "箇条書きが多めです。5個前後まで減らすと視線が迷いにくくなります。"
-            : "There are many bullet points. Around five is easier to scan.",
-        severity: "warning",
-      });
-    }
-    if (stats.maxCodeLines > 14) {
-      warnings.push({
-        slideIndex: index + 1,
-        message:
-          language === "ja"
-            ? "コードブロックが長めです。LTでは重要部分だけに絞るのがおすすめです。"
-            : "This code block is long. For a lightning talk, show only the key lines.",
-        severity: "warning",
-      });
-    }
-  });
-
-  return warnings;
 }

@@ -9,7 +9,7 @@ import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SlidePreview } from "@/components/SlidePreview";
-import { analyzeDeck, joinEditableSlides, renderSlides, splitEditableSlides } from "@/lib/markdown";
+import { joinEditableSlides, renderSlides, splitEditableSlides } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
 import { useLanguage } from "@/lib/i18n";
 
@@ -48,6 +48,17 @@ type SavedDeckState = {
   presentationMinutes: number;
   title: string;
   visibility: "private" | "public";
+};
+
+type AiReviewSuggestion = {
+  message: string;
+  severity: "high" | "medium" | "low";
+  slide?: number | null;
+};
+
+type AiReview = {
+  summary: string;
+  suggestions: AiReviewSuggestion[];
 };
 
 const initialMarkdown = `# 今日話すこと
@@ -116,12 +127,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [aiReview, setAiReview] = useState<AiReview | null>(null);
+  const [aiReviewError, setAiReviewError] = useState<string | null>(null);
+  const [aiReviewLoading, setAiReviewLoading] = useState(false);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
     () => renderSlides(markdown).map((slide) => ({ index: slide.index, html: slide.html })),
     [markdown],
   );
-  const warnings = useMemo(() => analyzeDeck(markdown, language), [language, markdown]);
   const slideCount = slides.length;
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
   const activeSlideMarkdown = slides[safeActiveSlideIndex] ?? "";
@@ -265,6 +278,34 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     updateActiveSlide(`${activeSlideMarkdown}${separator}${imageMarkdown}`);
     setImageOpen(false);
     setStatus(t.insertedImageCurrentPage(image.filename));
+  }
+
+  async function reviewWithAi() {
+    setAiReviewLoading(true);
+    setAiReviewError(null);
+    try {
+      const idToken = await token();
+      const response = await fetch("/api/ai/review", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ language, markdown, presentationMinutes, title }),
+      });
+      const data = (await response.json()) as { review?: AiReview; error?: string };
+      if (!response.ok || !data.review) {
+        if (response.status === 503) {
+          throw new Error(t.aiReviewNotConfigured);
+        }
+        throw new Error(data.error || t.aiReviewFailed);
+      }
+      setAiReview(data.review);
+    } catch (err) {
+      setAiReviewError(err instanceof Error ? err.message : t.aiReviewFailed);
+    } finally {
+      setAiReviewLoading(false);
+    }
   }
 
   async function uploadAndInsertImage(file: File | null) {
@@ -541,19 +582,52 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </div>
             <Card className="border border-line bg-white/90 shadow-panel">
               <Card.Content>
-              <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">{t.ltCheck}</h2>
-              {warnings.length ? (
-                <ul className="grid gap-2">
-                  {warnings.map((warning, index) => (
-                    <li className="rounded-md bg-amber-50 p-3 text-sm text-amber-900" key={`${warning.message}-${index}`}>
-                      {warning.slideIndex ? `Slide ${warning.slideIndex}: ` : ""}
-                      {warning.message}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-stone-600">{t.noWarnings}</p>
-              )}
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.aiReview}</h2>
+                  <Button
+                    isDisabled={aiReviewLoading || !markdown.trim()}
+                    size="sm"
+                    variant="outline"
+                    onPress={reviewWithAi}
+                  >
+                    {aiReviewLoading ? t.aiReviewing : t.runAiReview}
+                  </Button>
+                </div>
+                {aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{aiReviewError}</p> : null}
+                {aiReview ? (
+                  <div className="grid gap-3">
+                    <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-900">{aiReview.summary}</p>
+                    {aiReview.suggestions.length ? (
+                      <ul className="grid gap-2">
+                        {aiReview.suggestions.map((suggestion, index) => (
+                          <li className="rounded-md border border-line bg-white p-3 text-sm" key={`${suggestion.message}-${index}`}>
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded px-2 py-0.5 text-xs font-black uppercase ${
+                                  suggestion.severity === "high"
+                                    ? "bg-red-100 text-red-800"
+                                    : suggestion.severity === "medium"
+                                      ? "bg-amber-100 text-amber-900"
+                                      : "bg-emerald-100 text-emerald-800"
+                                }`}
+                              >
+                                {t.aiSeverity[suggestion.severity]}
+                              </span>
+                              {suggestion.slide ? (
+                                <span className="text-xs font-semibold text-stone-500">
+                                  {t.slidePage} {suggestion.slide}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-stone-700">{suggestion.message}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : !aiReviewError ? (
+                  <p className="text-sm text-stone-600">{t.aiReviewEmpty}</p>
+                ) : null}
               </Card.Content>
             </Card>
           </aside>

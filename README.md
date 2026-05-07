@@ -18,7 +18,7 @@ MarkdownでLT向けスライドを作るNext.js App Routerアプリです。Fire
 - `sanitize-html` によるHTML sanitize
 - 公開/非公開切り替え、公開URL閲覧
 - 発表時間の設定と発表画面でのカウントダウン
-- LT向け警告: 文字数、箇条書き数、スライド枚数、コードブロック行数
+- Gemini APIによるLTレビュー: 時間配分、情報量、伝わりやすさの改善提案
 - 画像ライブラリ、`<img>` Markdown挿入、ドラッグによる位置調整
 - ローカルMinIO / 本番Cloud Storage用ヘルパー `lib/storage.ts`
 
@@ -34,6 +34,8 @@ npm run dev:local
 ブラウザで `http://localhost:3000` を開きます。Node.jsは24系LTSを想定しています。Voltaを使う場合は `package.json` の設定でNode 24.15.0が選ばれます。
 
 ローカル開発ではFirebase Auth Emulatorを使います。`.env.example` を元に `.env` を作成し、必要に応じて `.env.local.example` を元に `.env.local` を作るとローカル用の値で上書きできます。
+
+Gemini LTレビューを使う場合は、`.env.local` に `GEMINI_API_KEY` を設定します。モデルは既定で `gemini-2.5-flash` を使い、必要に応じて `GEMINI_MODEL` で変更できます。
 
 ### よく使うコマンド
 
@@ -91,7 +93,7 @@ LT Slide Editor is a Next.js App Router application for creating lightning-talk 
 - HTML sanitization with `sanitize-html`
 - Public/private visibility and public URL viewing
 - Presentation duration setting and countdown timer in presentation view
-- Lightning-talk warnings for text length, bullet count, slide count, and code block length
+- Gemini API review for timing, density, clarity, and stronger takeaways
 - Image library, `<img>` Markdown insertion, and drag-based image positioning
 - Storage helper in `lib/storage.ts` for local MinIO and production Cloud Storage
 
@@ -107,6 +109,8 @@ npm run dev:local
 Open `http://localhost:3000` in your browser. Node.js 24 LTS is expected. If you use Volta, the project uses Node 24.15.0 from `package.json`.
 
 Local development uses the Firebase Auth Emulator. Create `.env` from `.env.example`; if you already have production or staging values, create `.env.local` from `.env.local.example` to override them for local development.
+
+To use Gemini LT review, set `GEMINI_API_KEY` in `.env.local`. The default model is `gemini-2.5-flash`; override it with `GEMINI_MODEL` if needed.
 
 ### Common Commands
 
