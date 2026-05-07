@@ -7,6 +7,7 @@ import { Button, Card, Chip, Tabs, Tooltip } from "@heroui/react";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { useAuth } from "@/components/AuthProvider";
+import { useLanguage } from "@/lib/i18n";
 
 type DeckSummary = {
   id: string;
@@ -42,11 +43,13 @@ function parseDashboardTab(value: string | null): DashboardTab {
 }
 
 function DashboardLoading() {
-  return <main className="p-6">Loading...</main>;
+  const { t } = useLanguage();
+  return <main className="p-6">{t.loading}</main>;
 }
 
 function DashboardContent() {
   const { user, loading, token } = useAuth();
+  const { language, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parseDashboardTab(searchParams.get("tab"));
@@ -83,7 +86,7 @@ function DashboardContent() {
           }),
         ]);
         if (!deckResponse.ok || !imageResponse.ok || !sharedSlideResponse.ok) {
-          setError("一覧を読み込めませんでした");
+          setError(t.listLoadFailed);
           return;
         }
         const deckData = (await deckResponse.json()) as { decks: DeckSummary[] };
@@ -93,13 +96,13 @@ function DashboardContent() {
         setImages(imageData.images);
         setSharedSlides(sharedSlideData.slides);
       } catch {
-        setError("一覧を読み込めませんでした");
+        setError(t.listLoadFailed);
       } finally {
         setListLoading(false);
       }
     }
     load();
-  }, [token, user]);
+  }, [t, token, user]);
 
   async function deleteSharedSlide(id: string) {
     setBusy(true);
@@ -111,11 +114,11 @@ function DashboardContent() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
-        throw new Error("共有スライドを削除できませんでした");
+        throw new Error(t.sharedSlideDeleteFailed);
       }
       setSharedSlides((slides) => slides.filter((slide) => slide.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "共有スライドを削除できませんでした");
+      setError(err instanceof Error ? err.message : t.sharedSlideDeleteFailed);
     } finally {
       setBusy(false);
     }
@@ -131,11 +134,11 @@ function DashboardContent() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
-        throw new Error("発表用スライドを削除できませんでした");
+        throw new Error(t.deckDeleteFailed);
       }
       setDecks((currentDecks) => currentDecks.filter((deck) => deck.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "発表用スライドを削除できませんでした");
+      setError(err instanceof Error ? err.message : t.deckDeleteFailed);
     } finally {
       setBusy(false);
     }
@@ -155,12 +158,12 @@ function DashboardContent() {
         body: formData,
       });
       if (!response.ok) {
-        throw new Error("画像をアップロードできませんでした");
+        throw new Error(t.imageUploadFailed);
       }
       const data = (await response.json()) as { image: ImageSummary };
       setImages((currentImages) => [data.image, ...currentImages]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "画像をアップロードできませんでした");
+      setError(err instanceof Error ? err.message : t.imageUploadFailed);
     } finally {
       setBusy(false);
     }
@@ -176,11 +179,11 @@ function DashboardContent() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
-        throw new Error("画像を削除できませんでした");
+        throw new Error(t.imageDeleteFailed);
       }
       setImages((currentImages) => currentImages.filter((image) => image.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "画像を削除できませんでした");
+      setError(err instanceof Error ? err.message : t.imageDeleteFailed);
     } finally {
       setBusy(false);
     }
@@ -193,7 +196,7 @@ function DashboardContent() {
       setCopiedImageId(image.id);
       window.setTimeout(() => setCopiedImageId((currentId) => (currentId === image.id ? null : currentId)), 1200);
     } catch {
-      setError("Markdownをコピーできませんでした");
+      setError(t.copyMarkdownFailed);
     }
   }
 
@@ -209,7 +212,7 @@ function DashboardContent() {
   }
 
   if (loading || !user) {
-    return <main className="p-6">Loading...</main>;
+    return <main className="p-6">{t.loading}</main>;
   }
 
   return (
@@ -218,17 +221,17 @@ function DashboardContent() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-black">スライド一覧</h1>
+            <h1 className="text-3xl font-black">{t.decksTitle}</h1>
             <p className="mt-1 text-sm text-stone-600">{user.email}</p>
           </div>
           <div className="flex justify-end">
             {activeTab === "shared" ? (
             <Link href="/shared-slides/new">
-              <Button variant="primary">共有スライド作成</Button>
+              <Button variant="primary">{t.createSharedSlide}</Button>
             </Link>
             ) : activeTab === "images" ? (
               <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                画像アップロード
+                {t.uploadImage}
                 <input
                   accept="image/*"
                   className="sr-only"
@@ -239,31 +242,31 @@ function DashboardContent() {
               </label>
             ) : (
             <Link href="/presentations/new">
-              <Button variant="primary">発表用スライド作成</Button>
+              <Button variant="primary">{t.createDeck}</Button>
             </Link>
             )}
           </div>
         </div>
         <Tabs
-          aria-label="一覧カテゴリ"
+          aria-label={t.decksTitle}
           className="mb-5"
           selectedKey={activeTab}
           onSelectionChange={(key) => changeTab(key as DashboardTab)}
         >
           <Tabs.List className="rounded-md border border-line bg-white p-1">
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="decks">
-              発表用スライド
+              {t.deckTab}
             </Tabs.Tab>
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="images">
-              画像
+              {t.imagesTab}
             </Tabs.Tab>
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="shared">
-              共有スライド
+              {t.sharedSlidesTab}
             </Tabs.Tab>
           </Tabs.List>
         </Tabs>
         {error ? <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-        {listLoading ? <LoadingBlock label="一覧を読み込み中..." /> : null}
+        {listLoading ? <LoadingBlock label={t.loading} /> : null}
         {!listLoading && activeTab === "decks" && decks.length ? (
           <div className="grid gap-3">
             {decks.map((deck) => (
@@ -274,15 +277,15 @@ function DashboardContent() {
                     <h2 className="text-xl font-black">{deck.title}</h2>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-600">
                       <Chip color={deck.visibility === "public" ? "accent" : "default"} size="sm" variant="soft">
-                        {deck.visibility === "public" ? "公開" : "非公開"}
+                        {deck.visibility === "public" ? t.public : t.private}
                       </Chip>
-                      <span>更新: {new Date(deck.updatedAt).toLocaleString("ja-JP")}</span>
+                      <span>{t.updated}: {new Date(deck.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {deck.visibility === "public" ? (
                       <Link href={`/view/${deck.slug}`} target="_blank">
-                        <Button size="sm" variant="outline">閲覧</Button>
+                        <Button size="sm" variant="outline">{t.view}</Button>
                       </Link>
                     ) : null}
                     <Button
@@ -291,10 +294,10 @@ function DashboardContent() {
                       variant="outline"
                       onPress={() => deleteDeck(deck.id)}
                     >
-                      削除
+                      {t.delete}
                     </Button>
                     <Link href={`/presentations/${deck.id}/edit`}>
-                      <Button size="sm" variant="primary">編集</Button>
+                      <Button size="sm" variant="primary">{t.edit}</Button>
                     </Link>
                   </div>
                 </div>
@@ -306,9 +309,9 @@ function DashboardContent() {
         {!listLoading && activeTab === "decks" && !decks.length ? (
           <Card className="border border-dashed border-line bg-white/80">
             <Card.Content className="items-center p-10 text-center">
-            <p className="mb-4 font-semibold text-stone-700">まだデッキがありません。</p>
+            <p className="mb-4 font-semibold text-stone-700">{t.noDecks}</p>
             <Link href="/presentations/new">
-              <Button variant="primary">発表用スライド作成</Button>
+              <Button variant="primary">{t.createDeck}</Button>
             </Link>
             </Card.Content>
           </Card>
@@ -327,7 +330,7 @@ function DashboardContent() {
                   <Tooltip>
                   <Button
                     isIconOnly
-                    aria-label={`${image.filename} のMarkdownをコピー`}
+                    aria-label={`${t.copyMarkdown}: ${image.filename}`}
                     className="mr-1"
                     size="sm"
                     variant="ghost"
@@ -344,7 +347,7 @@ function DashboardContent() {
                       </svg>
                     )}
                   </Button>
-                  <Tooltip.Content>Markdownをコピー</Tooltip.Content>
+                  <Tooltip.Content>{t.copyMarkdown}</Tooltip.Content>
                   </Tooltip>
                 </div>
                 <Button
@@ -354,7 +357,7 @@ function DashboardContent() {
                   variant="outline"
                   onPress={() => deleteImage(image.id)}
                 >
-                  削除
+                  {t.delete}
                 </Button>
                 </Card.Content>
               </Card>
@@ -364,9 +367,9 @@ function DashboardContent() {
         {!listLoading && activeTab === "images" && !images.length ? (
           <Card className="border border-dashed border-line bg-white/80">
             <Card.Content className="items-center p-10 text-center">
-            <p className="mb-4 font-semibold text-stone-700">画像はまだありません。</p>
+            <p className="mb-4 font-semibold text-stone-700">{t.noImages}</p>
             <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
-              画像アップロード
+              {t.uploadImage}
               <input
                 accept="image/*"
                 className="sr-only"
@@ -387,7 +390,7 @@ function DashboardContent() {
                   <div className="min-w-0">
                     <h2 className="text-xl font-black">{slide.title}</h2>
                     <p className="mt-1 text-sm text-stone-600">
-                      更新: {new Date(slide.updatedAt).toLocaleString("ja-JP")}
+                      {t.updated}: {new Date(slide.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}
                     </p>
                     <p className="mt-2 truncate text-sm text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ")}</p>
                   </div>
@@ -398,10 +401,10 @@ function DashboardContent() {
                       variant="outline"
                       onPress={() => deleteSharedSlide(slide.id)}
                     >
-                      削除
+                      {t.delete}
                     </Button>
                     <Link href={`/shared-slides/${slide.id}/edit`}>
-                      <Button size="sm" variant="primary">編集</Button>
+                      <Button size="sm" variant="primary">{t.edit}</Button>
                     </Link>
                   </div>
                 </div>
@@ -413,9 +416,9 @@ function DashboardContent() {
         {!listLoading && activeTab === "shared" && !sharedSlides.length ? (
           <Card className="border border-dashed border-line bg-white/80">
             <Card.Content className="items-center p-10 text-center">
-            <p className="mb-4 font-semibold text-stone-700">共有スライドはまだありません。</p>
+            <p className="mb-4 font-semibold text-stone-700">{t.noSharedSlides}</p>
             <Link href="/shared-slides/new">
-              <Button variant="primary">共有スライド作成</Button>
+              <Button variant="primary">{t.createSharedSlide}</Button>
             </Link>
             </Card.Content>
           </Card>

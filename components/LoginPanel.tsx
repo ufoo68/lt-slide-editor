@@ -5,9 +5,11 @@ import { useState } from "react";
 import { Button, Card, Input, Tabs } from "@heroui/react";
 import { useAuth } from "@/components/AuthProvider";
 import { getClientAuth, getGoogleProvider } from "@/lib/firebase-client";
+import { useLanguage } from "@/lib/i18n";
 
 export function LoginPanel() {
   const { configured } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -18,9 +20,9 @@ export function LoginPanel() {
     return (
       <Card className="w-full max-w-md border border-line bg-white/90 shadow-panel">
         <Card.Content className="p-6">
-          <h2 className="text-lg font-black">Firebase設定が必要です</h2>
+          <h2 className="text-lg font-black">{t.firebaseConfigRequired}</h2>
           <p className="mt-2 text-sm leading-6 text-stone-700">
-            Cloud Runの環境変数に `NEXT_PUBLIC_FIREBASE_API_KEY` などのFirebase Webアプリ設定を入れて、再デプロイしてください。
+            {t.firebaseConfigDescription}
           </p>
         </Card.Content>
       </Card>
@@ -38,7 +40,7 @@ export function LoginPanel() {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ログインに失敗しました");
+      setError(err instanceof Error ? err.message : t.signInFailed);
     } finally {
       setBusy(false);
     }
@@ -50,7 +52,7 @@ export function LoginPanel() {
     try {
       await signInWithPopup(await getClientAuth(), getGoogleProvider());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Googleログインに失敗しました");
+      setError(err instanceof Error ? err.message : t.googleSignInFailed);
     } finally {
       setBusy(false);
     }
@@ -60,25 +62,25 @@ export function LoginPanel() {
     <Card className="w-full max-w-md border border-line bg-white/90 shadow-panel">
       <Card.Content className="gap-4 p-5">
       <Tabs
-        aria-label="認証方法"
+        aria-label={t.languageMode}
         selectedKey={mode}
         onSelectionChange={(key) => setMode(key === "signup" ? "signup" : "signin")}
       >
         <Tabs.List className="rounded-md border border-line bg-white p-1">
           <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="signin">
-            ログイン
+            {t.signIn}
           </Tabs.Tab>
           <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="signup">
-            新規登録
+            {t.signUp}
           </Tabs.Tab>
         </Tabs.List>
       </Tabs>
       <label className="grid gap-1 text-sm font-semibold">
-        メール
+        {t.email}
         <Input onChange={(event) => setEmail(event.target.value)} type="email" value={email} variant="primary" />
       </label>
       <label className="grid gap-1 text-sm font-semibold">
-        パスワード
+        {t.password}
         <Input onChange={(event) => setPassword(event.target.value)} type="password" value={password} variant="primary" />
       </label>
       {error ? <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
@@ -88,14 +90,14 @@ export function LoginPanel() {
           variant="primary"
           onPress={submit}
         >
-          {mode === "signin" ? "メールでログイン" : "アカウント作成"}
+          {mode === "signin" ? t.signInWithEmail : t.createAccount}
         </Button>
         <Button
           isDisabled={busy}
           variant="outline"
           onPress={google}
         >
-          Googleで続ける
+          {t.continueWithGoogle}
         </Button>
       </div>
       </Card.Content>

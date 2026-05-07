@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SlideContent } from "@/components/SlideContent";
+import { useLanguage } from "@/lib/i18n";
 
 type PublicSlide = {
   index: number;
@@ -35,6 +36,7 @@ export function PublicSlideshow({
   updatedAt,
   slides,
 }: PublicSlideshowProps) {
+  const { t } = useLanguage();
   const [active, setActive] = useState(() => clampSlideIndex(initialActive, slides.length));
   const [isFullscreen, setIsFullscreen] = useState(false);
   const totalSeconds = Math.max(1, Math.round(presentationMinutes)) * 60;
@@ -146,7 +148,7 @@ export function PublicSlideshow({
   if (!current) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-ink px-4 text-white">
-        <p className="text-lg font-semibold">公開できるスライドがありません。</p>
+        <p className="text-lg font-semibold">{t.noPublicSlides}</p>
       </main>
     );
   }
@@ -157,7 +159,7 @@ export function PublicSlideshow({
         <header className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-black">{title}</h1>
-            <p className="text-xs font-semibold text-white/55">Updated {updatedAt}</p>
+            <p className="text-xs font-semibold text-white/55">{t.updatedLabel} {updatedAt}</p>
           </div>
           <div className="flex items-center gap-2">
             <div
@@ -171,16 +173,16 @@ export function PublicSlideshow({
                 onClick={timerRunning ? resetTimer : startTimer}
                 type="button"
               >
-                {timerRunning ? "リセット" : "スタート"}
+                {timerRunning ? t.resetTimer : t.startTimer}
               </button>
             </div>
             {onClose ? (
               <button className="h-10 rounded-md border border-white/20 px-3 text-sm font-bold" onClick={close} type="button">
-                閉じる
+                {t.close}
               </button>
             ) : null}
             <button
-              aria-label="前のスライド"
+              aria-label={t.previousSlide}
               className="h-10 min-w-10 rounded-md border border-white/20 px-3 text-sm font-bold disabled:opacity-35"
               disabled={active === 0}
               onClick={goPrevious}
@@ -192,7 +194,7 @@ export function PublicSlideshow({
               {active + 1} / {slides.length}
             </span>
             <button
-              aria-label="次のスライド"
+              aria-label={t.nextSlide}
               className="h-10 min-w-10 rounded-md border border-white/20 px-3 text-sm font-bold disabled:opacity-35"
               disabled={active >= slides.length - 1}
               onClick={goNext}
@@ -205,7 +207,7 @@ export function PublicSlideshow({
               onClick={toggleFullscreen}
               type="button"
             >
-              {isFullscreen ? "Exit" : "Full"}
+              {isFullscreen ? t.exitFullscreen : t.fullscreen}
             </button>
           </div>
         </header>

@@ -10,6 +10,7 @@ import { SlidePreview } from "@/components/SlidePreview";
 import { useAuth } from "@/components/AuthProvider";
 import { splitSlides } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
+import { useLanguage } from "@/lib/i18n";
 
 const initialMarkdown = `# 自己紹介
 
@@ -47,6 +48,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const { user, loading, token } = useAuth();
+  const { t } = useLanguage();
   const initialSavedState = useMemo<SavedSharedSlideState>(
     () => ({
       markdown: mode === "new" ? initialMarkdown : "",
@@ -89,7 +91,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (!response.ok) {
-          setError("共有スライドを読み込めませんでした");
+          setError(t.sharedSlideLoadFailed);
           return;
         }
         const data = (await response.json()) as { slide: LibrarySlide };
@@ -100,13 +102,13 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           title: data.slide.title,
         });
       } catch {
-        setError("共有スライドを読み込めませんでした");
+        setError(t.sharedSlideLoadFailed);
       } finally {
         setSlideLoading(false);
       }
     }
     loadSlide();
-  }, [mode, params.id, token, user]);
+  }, [mode, params.id, t, token, user]);
 
   useEffect(() => {
     async function loadImages() {
@@ -119,20 +121,20 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (!response.ok) {
-          setImageError("画像ライブラリを読み込めませんでした");
+          setImageError(t.imageLibraryLoadFailed);
           return;
         }
         const data = (await response.json()) as { images: ImageLibraryItem[] };
         setImages(data.images);
         setImageLoaded(true);
       } catch {
-        setImageError("画像ライブラリを読み込めませんでした");
+        setImageError(t.imageLibraryLoadFailed);
       } finally {
         setImageLoading(false);
       }
     }
     loadImages();
-  }, [imageLoaded, imageOpen, token, user]);
+  }, [imageLoaded, imageOpen, t, token, user]);
 
   function imageMarkdownWithLayout(image: ImageLibraryItem) {
     return image.markdown;
@@ -143,7 +145,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     const separator = markdown.trim() ? "\n\n" : "";
     setMarkdown(`${markdown}${separator}${imageMarkdown}`);
     setImageOpen(false);
-    setStatus(`「${image.filename}」を共有スライドに追加しました`);
+    setStatus(`${t.addToSharedSlide}: ${image.filename}`);
   }
 
   async function uploadAndInsertImage(file: File | null) {
@@ -160,14 +162,14 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         body: formData,
       });
       if (!response.ok) {
-        throw new Error("画像をアップロードできませんでした");
+        throw new Error(t.imageUploadFailed);
       }
       const data = (await response.json()) as { image: ImageLibraryItem };
       setImages((currentImages) => [data.image, ...currentImages]);
       setImageLoaded(true);
       insertImage(data.image);
     } catch (err) {
-      setImageError(err instanceof Error ? err.message : "画像をアップロードできませんでした");
+      setImageError(err instanceof Error ? err.message : t.imageUploadFailed);
     } finally {
       setUploadingImage(false);
     }
@@ -177,9 +179,9 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     setImageError(null);
     try {
       await navigator.clipboard.writeText(imageMarkdownWithLayout(image));
-      setStatus(`「${image.filename}」のMarkdownをコピーしました`);
+      setStatus(t.copiedMarkdown(image.filename));
     } catch {
-      setImageError("クリップボードにコピーできませんでした");
+      setImageError(t.clipboardFailed);
     }
   }
 
@@ -189,7 +191,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
     setStatus(null);
     try {
       if (invalidSlideCount) {
-        throw new Error("共有スライドは1ページだけ保存できます");
+        throw new Error(t.sharedSlideOnePageOnly);
       }
 
       const idToken = await token();
@@ -202,7 +204,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         body: JSON.stringify({ title, markdown }),
       });
       if (!response.ok) {
-        throw new Error("共有スライドを保存できませんでした");
+        throw new Error(t.sharedSlideSavedFailed);
       }
       const data = (await response.json()) as { slide: LibrarySlide };
       setTitle(data.slide.title);
@@ -211,12 +213,12 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         markdown: data.slide.markdown,
         title: data.slide.title,
       });
-      setStatus("保存しました");
+      setStatus(t.saved);
       if (mode === "new") {
         router.replace(`/shared-slides/${data.slide.id}/edit`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "共有スライドを保存できませんでした");
+      setError(err instanceof Error ? err.message : t.sharedSlideSavedFailed);
     } finally {
       setBusy(false);
     }
@@ -227,7 +229,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       <>
         <Header />
         <main className="mx-auto max-w-4xl px-4 py-8">
-          <LoadingBlock label={slideLoading ? "共有スライドを読み込み中..." : "認証を確認中..."} />
+          <LoadingBlock label={slideLoading ? t.sharedSlideLoading : t.authChecking} />
         </main>
       </>
     );
@@ -240,7 +242,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link className="text-sm font-semibold text-primary" href="/dashboard">
-              Dashboard
+              {t.dashboard}
             </Link>
             <input
               className="mt-1 block w-full min-w-[18rem] bg-transparent text-2xl font-black outline-none"
@@ -250,14 +252,14 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onPress={() => setImageOpen(true)}>
-              画像
+              {t.imagesTab}
             </Button>
             <Button
               isDisabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
               variant="primary"
               onPress={saveSlide}
             >
-              保存
+              {t.save}
             </Button>
           </div>
         </div>
@@ -265,7 +267,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         {status ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
         {invalidSlideCount ? (
-          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">共有スライドは1ページだけです。区切り線 `---` は使えません。</p>
+          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">{t.sharedSlideSeparatorWarning}</p>
         ) : null}
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)]">
@@ -285,8 +287,8 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           <aside className="grid content-start gap-4">
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">Preview</h2>
-                <span className="text-sm font-semibold text-stone-600">共有スライド</span>
+                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
+                <span className="text-sm font-semibold text-stone-600">{t.sharedSlidesTab}</span>
               </div>
               <SlidePreview editableImages markdown={markdown} onActiveSlideMarkdownChange={setMarkdown} />
             </div>
@@ -296,20 +298,20 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       {imageOpen ? (
         <div className="fixed inset-0 z-40">
           <button
-            aria-label="画像ライブラリを閉じる"
+            aria-label={t.closeImageLibrary}
             className="absolute inset-0 bg-black/20"
             onClick={() => setImageOpen(false)}
             type="button"
           />
           <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">画像</h2>
+              <h2 className="text-lg font-black">{t.imagesTab}</h2>
               <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setImageOpen(false)} type="button">
-                閉じる
+                {t.close}
               </button>
             </div>
             <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              画像アップロード
+              {t.uploadImage}
               <input
                 accept="image/*"
                 className="sr-only"
@@ -323,7 +325,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             </label>
             {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
             <div className="grid gap-2">
-              {imageLoading ? <LoadingBlock label="画像を読み込み中..." /> : null}
+              {imageLoading ? <LoadingBlock label={t.imagesLoading} /> : null}
               {!imageLoading && images.length ? (
                 images.map((image) => (
                   <article className="rounded-md border border-line bg-white p-3" key={image.id}>
@@ -337,20 +339,20 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
                       onClick={() => insertImage(image)}
                       type="button"
                     >
-                      共有スライドに追加
+                      {t.addToSharedSlide}
                     </button>
                     <button
                       className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
                       onClick={() => copyImageMarkdown(image)}
                       type="button"
                     >
-                      Markdownをコピー
+                      {t.copyMarkdown}
                     </button>
                   </article>
                 ))
               ) : !imageLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">画像はまだありません。</p>
+                  <p className="text-sm text-stone-600">{t.noImages}</p>
                 </div>
               ) : null}
             </div>

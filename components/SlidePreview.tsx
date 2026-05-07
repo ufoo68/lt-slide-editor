@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { renderSlides } from "@/lib/markdown";
 import { SlideContent } from "@/components/SlideContent";
+import { useLanguage } from "@/lib/i18n";
 
 type SlidePreviewProps = {
   activeIndex?: number;
@@ -129,6 +130,7 @@ function updateMarkdownImageLayout(markdown: string, targetIndex: number, layout
 }
 
 export function SlidePreview({ activeIndex, editableImages = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
+  const { t } = useLanguage();
   const slides = useMemo(() => renderSlides(markdown), [markdown]);
   const [internalActive, setInternalActive] = useState(0);
   const dragRef = useRef<ImageDragState | null>(null);
@@ -277,7 +279,7 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
   if (!current) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-lg border border-line bg-white text-sm text-stone-500">
-        Markdownを書くとプレビューされます
+        {t.markdownEmptyPreview}
       </div>
     );
   }
@@ -308,7 +310,7 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
           onClick={() => setActive(active - 1)}
           type="button"
         >
-          前へ
+          {t.previous}
         </button>
         <span className="text-sm font-semibold text-stone-600">
           {current.index + 1} / {slides.length}
@@ -319,7 +321,7 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
           onClick={() => setActive(active + 1)}
           type="button"
         >
-          次へ
+          {t.next}
         </button>
       </div>
     </div>

@@ -11,6 +11,7 @@ import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SlidePreview } from "@/components/SlidePreview";
 import { analyzeDeck, joinEditableSlides, renderSlides, splitEditableSlides } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
+import { useLanguage } from "@/lib/i18n";
 
 type Deck = {
   id: string;
@@ -81,6 +82,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const { user, loading, token } = useAuth();
+  const { language, t } = useLanguage();
   const initialSavedState = useMemo<SavedDeckState>(
     () => ({
       markdown: mode === "new" ? initialMarkdown : "",
@@ -119,7 +121,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     () => renderSlides(markdown).map((slide) => ({ index: slide.index, html: slide.html })),
     [markdown],
   );
-  const warnings = useMemo(() => analyzeDeck(markdown), [markdown]);
+  const warnings = useMemo(() => analyzeDeck(markdown, language), [language, markdown]);
   const slideCount = slides.length;
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
   const activeSlideMarkdown = slides[safeActiveSlideIndex] ?? "";
@@ -146,7 +148,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (!response.ok) {
-          setError("デッキを読み込めませんでした");
+          setError(t.deckLoadFailed);
           return;
         }
         const data = (await response.json()) as { deck: Deck };
@@ -163,13 +165,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           visibility: data.deck.visibility,
         });
       } catch {
-        setError("デッキを読み込めませんでした");
+        setError(t.deckLoadFailed);
       } finally {
         setDeckLoading(false);
       }
     }
     load();
-  }, [mode, params.id, token, user]);
+  }, [mode, params.id, t, token, user]);
 
   useEffect(() => {
     async function loadLibrary() {
@@ -182,20 +184,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (!response.ok) {
-          setLibraryError("ライブラリを読み込めませんでした");
+          setLibraryError(t.libraryLoadFailed);
           return;
         }
         const data = (await response.json()) as { slides: LibrarySlide[] };
         setLibrarySlides(data.slides);
         setLibraryLoaded(true);
       } catch {
-        setLibraryError("ライブラリを読み込めませんでした");
+        setLibraryError(t.libraryLoadFailed);
       } finally {
         setLibraryLoading(false);
       }
     }
     loadLibrary();
-  }, [libraryLoaded, libraryOpen, token, user]);
+  }, [libraryLoaded, libraryOpen, t, token, user]);
 
   useEffect(() => {
     async function loadImages() {
@@ -208,28 +210,28 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (!response.ok) {
-          setImageError("画像ライブラリを読み込めませんでした");
+          setImageError(t.imageLibraryLoadFailed);
           return;
         }
         const data = (await response.json()) as { images: ImageLibraryItem[] };
         setImages(data.images);
         setImageLoaded(true);
       } catch {
-        setImageError("画像ライブラリを読み込めませんでした");
+        setImageError(t.imageLibraryLoadFailed);
       } finally {
         setImageLoading(false);
       }
     }
     loadImages();
-  }, [imageLoaded, imageOpen, token, user]);
+  }, [imageLoaded, imageOpen, t, token, user]);
 
   async function copyLibrarySlide(slide: LibrarySlide) {
     setLibraryError(null);
     try {
       await navigator.clipboard.writeText(slide.markdown.trim());
-      setStatus(`「${slide.title}」のMarkdownをコピーしました`);
+      setStatus(t.copiedMarkdown(slide.title));
     } catch {
-      setLibraryError("クリップボードにコピーできませんでした");
+      setLibraryError(t.clipboardFailed);
     }
   }
 
@@ -240,16 +242,16 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     setMarkdown(joinEditableSlides(nextSlides));
     setActiveSlideIndex(insertIndex);
     setLibraryOpen(false);
-    setStatus(`「${slide.title}」を次のページに追加しました`);
+    setStatus(t.insertedLibrarySlide(slide.title));
   }
 
   async function copyImageMarkdown(image: ImageLibraryItem) {
     setImageError(null);
     try {
       await navigator.clipboard.writeText(imageMarkdownWithLayout(image));
-      setStatus(`「${image.filename}」のMarkdownをコピーしました`);
+      setStatus(t.copiedMarkdown(image.filename));
     } catch {
-      setImageError("クリップボードにコピーできませんでした");
+      setImageError(t.clipboardFailed);
     }
   }
 
@@ -262,7 +264,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     const separator = activeSlideMarkdown.trim() ? "\n\n" : "";
     updateActiveSlide(`${activeSlideMarkdown}${separator}${imageMarkdown}`);
     setImageOpen(false);
-    setStatus(`「${image.filename}」を現在のページに追加しました`);
+    setStatus(t.insertedImageCurrentPage(image.filename));
   }
 
   async function uploadAndInsertImage(file: File | null) {
@@ -279,14 +281,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         body: formData,
       });
       if (!response.ok) {
-        throw new Error("画像をアップロードできませんでした");
+        throw new Error(t.imageUploadFailed);
       }
       const data = (await response.json()) as { image: ImageLibraryItem };
       setImages((currentImages) => [data.image, ...currentImages]);
       setImageLoaded(true);
       insertImage(data.image);
     } catch (err) {
-      setImageError(err instanceof Error ? err.message : "画像をアップロードできませんでした");
+      setImageError(err instanceof Error ? err.message : t.imageUploadFailed);
     } finally {
       setUploadingImage(false);
     }
@@ -327,7 +329,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
 
   async function save() {
     setBusy(true);
-    setStatus("保存中...");
+    setStatus(t.saving);
     setError(null);
     try {
       const normalizedSlides = [...slides];
@@ -347,7 +349,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         body: JSON.stringify({ title, markdown: normalizedMarkdown, presentationMinutes, visibility }),
       });
       if (!response.ok) {
-        throw new Error("保存に失敗しました");
+        throw new Error(t.saveFailed);
       }
       const data = (await response.json()) as { deck: Deck };
       setDeck(data.deck);
@@ -359,12 +361,12 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         title: data.deck.title,
         visibility: data.deck.visibility,
       });
-      setStatus(removedEmptySlideCount ? `保存しました（空ページを${removedEmptySlideCount}件削除しました）` : "保存しました");
+      setStatus(removedEmptySlideCount ? t.savedRemovedEmpty(removedEmptySlideCount) : t.saved);
       if (mode === "new") {
         router.replace(`/presentations/${data.deck.id}/edit`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存に失敗しました");
+      setError(err instanceof Error ? err.message : t.saveFailed);
       setStatus(null);
     } finally {
       setBusy(false);
@@ -376,7 +378,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       <>
         <Header />
         <main className="mx-auto max-w-4xl px-4 py-8">
-          <LoadingBlock label={deckLoading ? "デッキを読み込み中..." : "認証を確認中..."} />
+          <LoadingBlock label={deckLoading ? t.deckLoading : t.authChecking} />
         </main>
       </>
     );
@@ -389,7 +391,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link className="text-sm font-semibold text-primary" href="/dashboard">
-              Dashboard
+              {t.dashboard}
             </Link>
             <input
               className="mt-1 block w-full min-w-[18rem] bg-transparent text-2xl font-black outline-none"
@@ -400,11 +402,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           <div className="flex flex-wrap items-center gap-2">
             {deck?.visibility === "public" ? (
               <Link href={`/view/${deck.slug}`} target="_blank">
-                <Button size="sm" variant="outline">公開URLを開く</Button>
+                <Button size="sm" variant="outline">{t.openPublicUrl}</Button>
               </Link>
             ) : null}
             <label className="flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold">
-              発表時間
+              {t.presentationTime}
               <input
                 className="h-8 w-16 bg-transparent text-right outline-none"
                 max={180}
@@ -413,7 +415,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 type="number"
                 value={presentationMinutes}
               />
-              分
+              {t.minutesUnit}
             </label>
             <Switch
               className="flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold"
@@ -432,20 +434,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   }`}
                 />
               </Switch.Control>
-              公開
+              {t.public}
             </Switch>
             <Button variant="outline" onPress={() => setImageOpen(true)}>
-              画像
+              {t.imagesTab}
             </Button>
             <Button variant="outline" onPress={() => setLibraryOpen(true)}>
-              共有スライド
+              {t.sharedSlidesTab}
             </Button>
             <Button
               isDisabled={busy || !title.trim() || !hasUnsavedChanges}
               variant="primary"
               onPress={save}
             >
-              保存
+              {t.save}
             </Button>
           </div>
         </div>
@@ -458,20 +460,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <div className="flex items-center justify-between">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
               <span className="text-sm font-semibold text-stone-600">
-                {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} slides`}
+                {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} ${language === "ja" ? "slides" : "slides"}`}
               </span>
             </div>
             <Tabs
-              aria-label="編集モード"
+              aria-label={t.pageEdit}
               selectedKey={editMode}
               onSelectionChange={(key) => setEditMode(key === "full" ? "full" : "page")}
             >
               <Tabs.List className="rounded-md border border-line bg-white p-1">
                 <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="page">
-                  ページ編集
+                  {t.pageEdit}
                 </Tabs.Tab>
                 <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="full">
-                  Full Markdown
+                  {t.fullMarkdown}
                 </Tabs.Tab>
               </Tabs.List>
             </Tabs>
@@ -484,7 +486,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     variant="outline"
                     onPress={goPreviousSlide}
                   >
-                    前のページへ
+                    {t.previousPage}
                   </Button>
                   <Button
                     isDisabled={!activeSlideMarkdown.trim()}
@@ -492,11 +494,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     variant="outline"
                     onPress={goNextSlide}
                   >
-                    次のページへ
+                    {t.nextPage}
                   </Button>
                 </div>
                 <Button size="sm" variant="outline" onPress={deleteActiveSlide}>
-                  このページを削除
+                  {t.deletePage}
                 </Button>
               </div>
             ) : null}
@@ -521,11 +523,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           <aside className="grid content-start gap-4">
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">Preview</h2>
+                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-stone-600">ページ: {safeActiveSlideIndex + 1}</span>
+                  <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
                   <Button size="sm" variant="outline" onPress={() => setPresentationPreviewOpen(true)}>
-                    発表表示
+                    {t.presentationView}
                   </Button>
                 </div>
               </div>
@@ -539,7 +541,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </div>
             <Card className="border border-line bg-white/90 shadow-panel">
               <Card.Content>
-              <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">LTチェック</h2>
+              <h2 className="mb-3 text-sm font-black uppercase tracking-normal text-stone-600">{t.ltCheck}</h2>
               {warnings.length ? (
                 <ul className="grid gap-2">
                   {warnings.map((warning, index) => (
@@ -550,7 +552,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-stone-600">今のところ大きな警告はありません。</p>
+                <p className="text-sm text-stone-600">{t.noWarnings}</p>
               )}
               </Card.Content>
             </Card>
@@ -560,24 +562,24 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       {libraryOpen ? (
         <div className="fixed inset-0 z-40">
           <button
-            aria-label="共有スライドを閉じる"
+            aria-label={t.closeSharedSlides}
             className="absolute inset-0 bg-black/20"
             onClick={() => setLibraryOpen(false)}
             type="button"
           />
           <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">共有スライド</h2>
+              <h2 className="text-lg font-black">{t.sharedSlidesTab}</h2>
               <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setLibraryOpen(false)} type="button">
-                閉じる
+                {t.close}
               </button>
             </div>
             <Link className="rounded-md bg-mint px-4 py-3 text-center text-sm font-semibold text-white" href="/shared-slides/new">
-              共有スライド作成
+              {t.createSharedSlide}
             </Link>
             {libraryError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
             <div className="grid gap-2">
-              {libraryLoading ? <LoadingBlock label="共有スライドを読み込み中..." /> : null}
+              {libraryLoading ? <LoadingBlock label={t.sharedSlidesLoading} /> : null}
               {!libraryLoading && librarySlides.length ? (
                 librarySlides.map((slide) => (
                   <article className="rounded-md border border-line bg-white p-3" key={slide.id}>
@@ -590,20 +592,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                       onClick={() => insertLibrarySlideAfterCurrent(slide)}
                       type="button"
                     >
-                      次のページに追加
+                      {t.addToNextPage}
                     </button>
                     <button
                       className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
                       onClick={() => copyLibrarySlide(slide)}
                       type="button"
                     >
-                      Markdownをコピー
+                      {t.copyMarkdown}
                     </button>
                   </article>
                 ))
               ) : !libraryLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">共有スライドはまだありません。</p>
+                  <p className="text-sm text-stone-600">{t.noSharedSlides}</p>
                 </div>
               ) : null}
             </div>
@@ -613,20 +615,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       {imageOpen ? (
         <div className="fixed inset-0 z-40">
           <button
-            aria-label="画像ライブラリを閉じる"
+            aria-label={t.closeImageLibrary}
             className="absolute inset-0 bg-black/20"
             onClick={() => setImageOpen(false)}
             type="button"
           />
           <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">画像</h2>
+              <h2 className="text-lg font-black">{t.imagesTab}</h2>
               <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setImageOpen(false)} type="button">
-                閉じる
+                {t.close}
               </button>
             </div>
             <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              画像アップロード
+              {t.uploadImage}
               <input
                 accept="image/*"
                 className="sr-only"
@@ -640,7 +642,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </label>
             {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
             <div className="grid gap-2">
-              {imageLoading ? <LoadingBlock label="画像を読み込み中..." /> : null}
+              {imageLoading ? <LoadingBlock label={t.imagesLoading} /> : null}
               {!imageLoading && images.length ? (
                 images.map((image) => (
                   <article className="rounded-md border border-line bg-white p-3" key={image.id}>
@@ -654,20 +656,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                       onClick={() => insertImage(image)}
                       type="button"
                     >
-                      現在のページに追加
+                      {t.addToCurrentPage}
                     </button>
                     <button
                       className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
                       onClick={() => copyImageMarkdown(image)}
                       type="button"
                     >
-                      Markdownをコピー
+                      {t.copyMarkdown}
                     </button>
                   </article>
                 ))
               ) : !imageLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">画像はまだありません。</p>
+                  <p className="text-sm text-stone-600">{t.noImages}</p>
                 </div>
               ) : null}
             </div>
@@ -681,8 +683,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             onClose={() => setPresentationPreviewOpen(false)}
             presentationMinutes={presentationMinutes}
             slides={presentationSlides}
-            title={title || "Untitled"}
-            updatedAt={deck ? new Date(deck.updatedAt).toLocaleDateString("ja-JP") : "編集中"}
+            title={title || t.untitled}
+            updatedAt={deck ? new Date(deck.updatedAt).toLocaleDateString(language === "ja" ? "ja-JP" : "en-US") : t.editing}
           />
         </div>
       ) : null}

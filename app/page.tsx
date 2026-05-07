@@ -7,9 +7,11 @@ import { Button, Chip } from "@heroui/react";
 import { Header } from "@/components/Header";
 import { LoginPanel } from "@/components/LoginPanel";
 import { useAuth } from "@/components/AuthProvider";
+import { useLanguage } from "@/lib/i18n";
 
 export default function HomePage() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -23,21 +25,21 @@ export default function HomePage() {
       <Header />
       <main className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 px-4 py-10 lg:grid-cols-[1.1fr_0.9fr]">
         <section>
-          <Chip className="mb-4" color="accent" variant="soft">Markdown slides for lightning talks</Chip>
+          <Chip className="mb-4" color="accent" variant="soft">{t.homeTagline}</Chip>
           <h1 className="max-w-3xl text-5xl font-black leading-[1.02] tracking-normal md:text-7xl">
-            LT Slide Editor
+            {t.appName}
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-700">
-            5〜15分のLTを素早く作るための、MarkdownベースのWebスライド作成ツールです。箇条書き、コード、公開URL共有に絞って、発表資料を軽く作れます。
+            {t.homeDescription}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="#login">
-              <Button variant="primary">はじめる</Button>
+              <Button variant="primary">{t.start}</Button>
             </Link>
           </div>
         </section>
         <section className="grid justify-items-center" id="login">
-          {loading ? <p>Loading...</p> : <LoginPanel />}
+          {loading ? <p>{t.loading}</p> : <LoginPanel />}
         </section>
       </main>
     </>
