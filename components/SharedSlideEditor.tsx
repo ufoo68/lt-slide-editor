@@ -238,7 +238,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   return (
     <>
       <Header />
-      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-5">
+      <main className="mx-auto flex h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-4 overflow-hidden px-4 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link className="text-sm font-semibold text-primary" href="/dashboard">
@@ -270,21 +270,21 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">{t.sharedSlideSeparatorWarning}</p>
         ) : null}
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)]">
-          <div className="grid gap-3">
+        <section className="grid min-h-0 flex-1 items-start gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-3 lg:h-full">
             <div className="flex items-center justify-between">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
               <span className="text-sm font-semibold text-stone-600">1 slide</span>
             </div>
             <textarea
-              className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+              className="min-h-[24rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint lg:min-h-0 lg:flex-1"
               onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
               onChange={(event) => setMarkdown(event.target.value)}
               spellCheck={false}
               value={markdown}
             />
           </div>
-          <aside className="grid content-start gap-4">
+          <aside className="grid min-h-0 gap-4 lg:h-full lg:content-start">
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
