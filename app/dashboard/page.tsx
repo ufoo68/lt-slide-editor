@@ -203,11 +203,7 @@ function DashboardContent() {
 
   function changeTab(tab: DashboardTab) {
     const nextParams = new URLSearchParams(searchParams);
-    if (tab === "decks") {
-      nextParams.delete("tab");
-    } else {
-      nextParams.set("tab", tab);
-    }
+    nextParams.set("tab", tab);
     const nextQuery = nextParams.toString();
     router.replace(nextQuery ? `/dashboard?${nextQuery}` : "/dashboard", { scroll: false });
   }
@@ -226,26 +222,49 @@ function DashboardContent() {
             <p className="mt-1 text-sm text-stone-600">{user.email}</p>
           </div>
           <div className="flex justify-end">
-            {activeTab === "shared" ? (
-            <Link href="/shared-slides/new">
-              <Button variant="primary">{t.createSharedSlide}</Button>
-            </Link>
-            ) : activeTab === "media" ? (
-              <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                {t.uploadMedia}
-                <input
-                  accept="image/*,video/*"
-                  className="sr-only"
-                  disabled={busy}
-                  onChange={(event) => uploadMedia(event.target.files?.[0] ?? null)}
-                  type="file"
-                />
-              </label>
-            ) : (
-            <Link href="/presentations/new">
-              <Button variant="primary">{t.createDeck}</Button>
-            </Link>
-            )}
+            {(() => {
+              switch (activeTab) {
+                case "decks":
+                  return (
+                    <Link href="/presentations/new">
+                      <Button variant="primary">
+                        {t.createDeck}
+                      </Button>
+                    </Link>
+                  );
+                case "shared":
+                  return (
+                    <Link href="/shared-slides/new">
+                      <Button variant="primary">
+                        {t.createSharedSlide}
+                      </Button>
+                    </Link>
+                  );
+                case "media":
+                  return (
+                    <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                      {t.uploadMedia}
+                      <input
+                        accept="image/*,video/*"
+                        className="sr-only"
+                        disabled={busy}
+                        onChange={(event) =>
+                          uploadMedia(event.target.files?.[0] ?? null)
+                        }
+                        type="file"
+                      />
+                    </label>
+                  );
+                default:
+                  return (
+                    <Link href="/presentations/new">
+                      <Button variant="primary">
+                        {t.createDeck}
+                      </Button>
+                    </Link>
+                  );
+              }
+            })()}
           </div>
         </div>
         <Tabs
@@ -258,11 +277,11 @@ function DashboardContent() {
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="decks">
               {t.deckTab}
             </Tabs.Tab>
-            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="media">
-              {t.mediaTab}
-            </Tabs.Tab>
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="shared">
               {t.sharedSlidesTab}
+            </Tabs.Tab>
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="media">
+              {t.mediaTab}
             </Tabs.Tab>
           </Tabs.List>
         </Tabs>
