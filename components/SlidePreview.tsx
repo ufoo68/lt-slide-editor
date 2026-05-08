@@ -8,35 +8,36 @@ import { useLanguage } from "@/lib/i18n";
 
 type SlidePreviewProps = {
   activeIndex?: number;
-  editableImages?: boolean;
+  editableMedia?: boolean;
   markdown: string;
   onActiveIndexChange?: (index: number) => void;
   onActiveSlideMarkdownChange?: (markdown: string) => void;
 };
 
-type ImageLayout = {
+type MediaLayout = {
   h: number;
   w: number;
   x: number;
   y: number;
 };
 
-type ImageDragState = {
-  corner: ImageResizeCorner | null;
+type MediaDragState = {
+  corner: MediaResizeCorner | null;
   containerRect: DOMRect;
-  image: HTMLImageElement;
-  imageIndex: number;
+  media: HTMLElement;
+  mediaIndex: number;
   mode: "move" | "resize";
   pointerId: number;
-  startLayout: ImageLayout;
+  startLayout: MediaLayout;
   startX: number;
   startY: number;
 };
 
-type ImageResizeCorner = "nw" | "ne" | "sw" | "se";
+type MediaResizeCorner = "nw" | "ne" | "sw" | "se";
 
-const imageMarkdownPattern = /<img\b[^>]*>|!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)/g;
+const mediaMarkdownPattern = /<video\b[^>]*>[\s\S]*?<\/video>|<img\b[^>]*>|!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)/g;
 const resizeCornerClasses = ["is-resize-nw", "is-resize-ne", "is-resize-sw", "is-resize-se"];
+const editableMediaSelector = "img.slide-media-absolute, video.slide-media-absolute";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -54,11 +55,11 @@ function escapeAttribute(value: string) {
     .replace(/>/g, "&gt;");
 }
 
-function imageStyle(layout: ImageLayout) {
+function mediaStyle(layout: MediaLayout) {
   return `position:absolute;left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;object-fit:contain;`;
 }
 
-function parseLayout(value: string | null): ImageLayout {
+function parseLayout(value: string | null): MediaLayout {
   const pairs = Object.fromEntries(
     (value ?? "")
       .split(";")
@@ -78,16 +79,16 @@ function parseLayout(value: string | null): ImageLayout {
   };
 }
 
-function applyImageLayout(image: HTMLImageElement, layout: ImageLayout) {
-  image.dataset.imageLayout = `x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`;
-  image.style.left = `${layout.x}%`;
-  image.style.top = `${layout.y}%`;
-  image.style.width = `${layout.w}%`;
-  image.style.height = `${layout.h}%`;
+function applyMediaLayout(media: HTMLElement, layout: MediaLayout) {
+  media.dataset.mediaLayout = `x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`;
+  media.style.left = `${layout.x}%`;
+  media.style.top = `${layout.y}%`;
+  media.style.width = `${layout.w}%`;
+  media.style.height = `${layout.h}%`;
 }
 
-function imageResizeCorner(event: PointerEvent<HTMLDivElement>, image: HTMLImageElement): ImageResizeCorner | null {
-  const rect = image.getBoundingClientRect();
+function mediaResizeCorner(event: PointerEvent<HTMLDivElement>, media: HTMLElement): MediaResizeCorner | null {
+  const rect = media.getBoundingClientRect();
   const cornerSize = 18;
   const nearLeft = event.clientX <= rect.left + cornerSize;
   const nearRight = event.clientX >= rect.right - cornerSize;
@@ -101,16 +102,16 @@ function imageResizeCorner(event: PointerEvent<HTMLDivElement>, image: HTMLImage
   return null;
 }
 
-function markResizeCorner(image: HTMLImageElement | null, corner: ImageResizeCorner | null) {
-  image?.classList.remove(...resizeCornerClasses);
-  if (image && corner) {
-    image.classList.add(`is-resize-${corner}`);
+function markResizeCorner(media: HTMLElement | null, corner: MediaResizeCorner | null) {
+  media?.classList.remove(...resizeCornerClasses);
+  if (media && corner) {
+    media.classList.add(`is-resize-${corner}`);
   }
 }
 
-function updateMarkdownImageLayout(markdown: string, targetIndex: number, layout: ImageLayout) {
+function updateMarkdownMediaLayout(markdown: string, targetIndex: number, layout: MediaLayout) {
   let index = 0;
-  return markdown.replace(imageMarkdownPattern, (match, alt: string, src: string, title: string | undefined) => {
+  return markdown.replace(mediaMarkdownPattern, (match, alt: string, src: string, title: string | undefined) => {
     if (index !== targetIndex) {
       index += 1;
       return match;
@@ -118,23 +119,32 @@ function updateMarkdownImageLayout(markdown: string, targetIndex: number, layout
 
     index += 1;
     if (match.startsWith("<img")) {
-      const nextStyle = `style="${imageStyle(layout)}"`;
+      const nextStyle = `style="${mediaStyle(layout)}"`;
       if (/\sstyle=(?:"[^"]*"|'[^']*')/i.test(match)) {
         return match.replace(/\sstyle=(?:"[^"]*"|'[^']*')/i, ` ${nextStyle}`);
       }
       return match.replace(/\s*\/?>$/, ` ${nextStyle}>`);
     }
+    if (match.startsWith("<video")) {
+      const nextStyle = `style="${mediaStyle(layout)}"`;
+      return match.replace(/<video\b[^>]*>/i, (openingTag) => {
+        if (/\sstyle=(?:"[^"]*"|'[^']*')/i.test(openingTag)) {
+          return openingTag.replace(/\sstyle=(?:"[^"]*"|'[^']*')/i, ` ${nextStyle}`);
+        }
+        return openingTag.replace(/>$/, ` ${nextStyle}>`);
+      });
+    }
 
-    return `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}" style="${imageStyle(layout)}">`;
+    return `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}" style="${mediaStyle(layout)}">`;
   });
 }
 
-export function SlidePreview({ activeIndex, editableImages = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
+export function SlidePreview({ activeIndex, editableMedia = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
   const { t } = useLanguage();
   const slides = useMemo(() => renderSlides(markdown), [markdown]);
   const [internalActive, setInternalActive] = useState(0);
-  const dragRef = useRef<ImageDragState | null>(null);
-  const hoverImageRef = useRef<HTMLImageElement | null>(null);
+  const dragRef = useRef<MediaDragState | null>(null);
+  const hoverMediaRef = useRef<HTMLElement | null>(null);
   const active = activeIndex ?? internalActive;
   const current = slides[Math.min(active, Math.max(slides.length - 1, 0))];
 
@@ -147,13 +157,13 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
     setInternalActive(nextIndex);
   }
 
-  function startImageDrag(event: PointerEvent<HTMLDivElement>) {
-    if (!editableImages || !onActiveSlideMarkdownChange) {
+  function startMediaDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!editableMedia || !onActiveSlideMarkdownChange) {
       return;
     }
 
-    const image = (event.target as HTMLElement).closest<HTMLImageElement>("img.slide-image-absolute");
-    if (!image) {
+    const media = (event.target as HTMLElement).closest<HTMLElement>(editableMediaSelector);
+    if (!media) {
       return;
     }
 
@@ -163,15 +173,15 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
     }
 
     event.preventDefault();
-    const corner = imageResizeCorner(event, image);
-    const startLayout = parseLayout(image.dataset.imageLayout ?? null);
-    image.classList.add("is-editable");
+    const corner = mediaResizeCorner(event, media);
+    const startLayout = parseLayout(media.dataset.mediaLayout ?? null);
+    media.classList.add("is-editable");
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       corner,
       containerRect: container.getBoundingClientRect(),
-      image,
-      imageIndex: Number(image.dataset.slideImageIndex ?? 0),
+      media,
+      mediaIndex: Number(media.dataset.slideMediaIndex ?? 0),
       mode: corner ? "resize" : "move",
       pointerId: event.pointerId,
       startLayout,
@@ -180,7 +190,7 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
     };
   }
 
-  function moveImage(event: PointerEvent<HTMLDivElement>) {
+  function moveMedia(event: PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) {
       return;
@@ -190,17 +200,17 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
     const deltaY = ((event.clientY - drag.startY) / drag.containerRect.height) * 100;
     const nextLayout =
       drag.mode === "resize"
-        ? resizeImageLayout(drag, deltaX, deltaY)
+        ? resizeMediaLayout(drag, deltaX, deltaY)
         : {
             ...drag.startLayout,
             x: formatPercent(clamp(drag.startLayout.x + deltaX, 0, 100 - drag.startLayout.w)),
             y: formatPercent(clamp(drag.startLayout.y + deltaY, 0, 100 - drag.startLayout.h)),
           };
 
-    applyImageLayout(drag.image, nextLayout);
+    applyMediaLayout(drag.media, nextLayout);
   }
 
-  function resizeImageLayout(drag: ImageDragState, deltaX: number, deltaY: number): ImageLayout {
+  function resizeMediaLayout(drag: MediaDragState, deltaX: number, deltaY: number): MediaLayout {
     const { h, w, x, y } = drag.startLayout;
 
     switch (drag.corner) {
@@ -242,38 +252,38 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
     }
   }
 
-  function finishImageDrag(event: PointerEvent<HTMLDivElement>) {
+  function finishMediaDrag(event: PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId || !current || !onActiveSlideMarkdownChange) {
       return;
     }
 
-    const nextLayout = parseLayout(drag.image.dataset.imageLayout ?? null);
-    drag.image.classList.remove("is-editable");
+    const nextLayout = parseLayout(drag.media.dataset.mediaLayout ?? null);
+    drag.media.classList.remove("is-editable");
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     dragRef.current = null;
-    onActiveSlideMarkdownChange(updateMarkdownImageLayout(current.markdown, drag.imageIndex, nextLayout));
+    onActiveSlideMarkdownChange(updateMarkdownMediaLayout(current.markdown, drag.mediaIndex, nextLayout));
   }
 
-  function updateImageHover(event: PointerEvent<HTMLDivElement>) {
-    if (!editableImages || dragRef.current) {
+  function updateMediaHover(event: PointerEvent<HTMLDivElement>) {
+    if (!editableMedia || dragRef.current) {
       return;
     }
 
-    const image = (event.target as HTMLElement).closest<HTMLImageElement>("img.slide-image-absolute");
-    if (hoverImageRef.current && hoverImageRef.current !== image) {
-      markResizeCorner(hoverImageRef.current, null);
+    const media = (event.target as HTMLElement).closest<HTMLElement>(editableMediaSelector);
+    if (hoverMediaRef.current && hoverMediaRef.current !== media) {
+      markResizeCorner(hoverMediaRef.current, null);
     }
 
-    hoverImageRef.current = image;
-    markResizeCorner(image, image ? imageResizeCorner(event, image) : null);
+    hoverMediaRef.current = media;
+    markResizeCorner(media, media ? mediaResizeCorner(event, media) : null);
   }
 
-  function clearImageHover() {
-    markResizeCorner(hoverImageRef.current, null);
-    hoverImageRef.current = null;
+  function clearMediaHover() {
+    markResizeCorner(hoverMediaRef.current, null);
+    hoverMediaRef.current = null;
   }
 
   if (!current) {
@@ -288,17 +298,17 @@ export function SlidePreview({ activeIndex, editableImages = false, markdown, on
     <div className="grid gap-3">
       <div
         className="aspect-video overflow-hidden rounded-lg border border-line bg-white shadow-panel"
-        onPointerCancel={finishImageDrag}
-        onPointerDown={startImageDrag}
-        onPointerLeave={clearImageHover}
+        onPointerCancel={finishMediaDrag}
+        onPointerDown={startMediaDrag}
+        onPointerLeave={clearMediaHover}
         onPointerMove={(event) => {
-          moveImage(event);
-          updateImageHover(event);
+          moveMedia(event);
+          updateMediaHover(event);
         }}
-        onPointerUp={finishImageDrag}
+        onPointerUp={finishMediaDrag}
       >
         <SlideContent
-          className={`slide-content flex h-full flex-col justify-center p-8 ${editableImages ? "slide-content-editable" : ""}`}
+          className={`slide-content flex h-full flex-col justify-center p-8 ${editableMedia ? "slide-content-editable" : ""}`}
           html={current.html}
           key={`${current.index}-${current.html}`}
         />

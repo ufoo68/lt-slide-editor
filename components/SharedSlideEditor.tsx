@@ -26,7 +26,8 @@ type LibrarySlide = {
   updatedAt: string;
 };
 
-type ImageLibraryItem = {
+type MediaLibraryItem = {
+  contentType: string;
   id: string;
   filename: string;
   markdown: string;
@@ -63,12 +64,12 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [slideLoading, setSlideLoading] = useState(mode === "edit");
-  const [imageError, setImageError] = useState<string | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageLoading, setImageLoading] = useState(false);
-  const [imageOpen, setImageOpen] = useState(false);
-  const [images, setImages] = useState<ImageLibraryItem[]>([]);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [media, setMedia] = useState<MediaLibraryItem[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const slideCount = useMemo(() => splitSlides(markdown).length, [markdown]);
   const hasSeparator = useMemo(() => /\n---\s*(?:\n|$)/.test(markdown), [markdown]);
   const invalidSlideCount = slideCount !== 1 || hasSeparator;
@@ -111,77 +112,77 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   }, [mode, params.id, t, token, user]);
 
   useEffect(() => {
-    async function loadImages() {
-      if (!user || !imageOpen || imageLoaded) return;
-      setImageError(null);
-      setImageLoading(true);
+    async function loadMedia() {
+      if (!user || !mediaOpen || mediaLoaded) return;
+      setMediaError(null);
+      setMediaLoading(true);
       try {
         const idToken = await token();
-        const response = await fetch("/api/images", {
+        const response = await fetch("/api/media", {
           headers: { Authorization: `Bearer ${idToken}` },
         });
         if (!response.ok) {
-          setImageError(t.imageLibraryLoadFailed);
+          setMediaError(t.mediaLibraryLoadFailed);
           return;
         }
-        const data = (await response.json()) as { images: ImageLibraryItem[] };
-        setImages(data.images);
-        setImageLoaded(true);
+        const data = (await response.json()) as { media: MediaLibraryItem[] };
+        setMedia(data.media);
+        setMediaLoaded(true);
       } catch {
-        setImageError(t.imageLibraryLoadFailed);
+        setMediaError(t.mediaLibraryLoadFailed);
       } finally {
-        setImageLoading(false);
+        setMediaLoading(false);
       }
     }
-    loadImages();
-  }, [imageLoaded, imageOpen, t, token, user]);
+    loadMedia();
+  }, [mediaLoaded, mediaOpen, t, token, user]);
 
-  function imageMarkdownWithLayout(image: ImageLibraryItem) {
-    return image.markdown;
+  function mediaMarkdownWithLayout(item: MediaLibraryItem) {
+    return item.markdown;
   }
 
-  function insertImage(image: ImageLibraryItem) {
-    const imageMarkdown = imageMarkdownWithLayout(image);
+  function insertMedia(item: MediaLibraryItem) {
+    const mediaMarkdown = mediaMarkdownWithLayout(item);
     const separator = markdown.trim() ? "\n\n" : "";
-    setMarkdown(`${markdown}${separator}${imageMarkdown}`);
-    setImageOpen(false);
-    setStatus(`${t.addToSharedSlide}: ${image.filename}`);
+    setMarkdown(`${markdown}${separator}${mediaMarkdown}`);
+    setMediaOpen(false);
+    setStatus(`${t.addToSharedSlide}: ${item.filename}`);
   }
 
-  async function uploadAndInsertImage(file: File | null) {
+  async function uploadAndInsertMedia(file: File | null) {
     if (!file) return;
-    setUploadingImage(true);
-    setImageError(null);
+    setUploadingMedia(true);
+    setMediaError(null);
     try {
       const idToken = await token();
       const formData = new FormData();
       formData.set("file", file);
-      const response = await fetch("/api/images", {
+      const response = await fetch("/api/media", {
         method: "POST",
         headers: { Authorization: `Bearer ${idToken}` },
         body: formData,
       });
       if (!response.ok) {
-        throw new Error(t.imageUploadFailed);
+        throw new Error(t.mediaUploadFailed);
       }
-      const data = (await response.json()) as { image: ImageLibraryItem };
-      setImages((currentImages) => [data.image, ...currentImages]);
-      setImageLoaded(true);
-      insertImage(data.image);
+      const data = (await response.json()) as { media: MediaLibraryItem };
+      setMedia((currentMedia) => [data.media, ...currentMedia]);
+      setMediaLoaded(true);
+      insertMedia(data.media);
     } catch (err) {
-      setImageError(err instanceof Error ? err.message : t.imageUploadFailed);
+      setMediaError(err instanceof Error ? err.message : t.mediaUploadFailed);
     } finally {
-      setUploadingImage(false);
+      setUploadingMedia(false);
     }
   }
 
-  async function copyImageMarkdown(image: ImageLibraryItem) {
-    setImageError(null);
+  async function copyMediaMarkdown(item: MediaLibraryItem) {
+    setMediaError(null);
     try {
-      await navigator.clipboard.writeText(imageMarkdownWithLayout(image));
-      setStatus(t.copiedMarkdown(image.filename));
+      await navigator.clipboard.writeText(mediaMarkdownWithLayout(item));
+      setStatus(t.copiedMarkdown(item.filename));
     } catch {
-      setImageError(t.clipboardFailed);
+      setMediaError(t.clipboardFailed);
     }
   }
 
@@ -251,8 +252,8 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onPress={() => setImageOpen(true)}>
-              {t.imagesTab}
+            <Button variant="outline" onPress={() => setMediaOpen(true)}>
+              {t.mediaTab}
             </Button>
             <Button
               isDisabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
@@ -290,69 +291,73 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
                 <span className="text-sm font-semibold text-stone-600">{t.sharedSlidesTab}</span>
               </div>
-              <SlidePreview editableImages markdown={markdown} onActiveSlideMarkdownChange={setMarkdown} />
+              <SlidePreview editableMedia markdown={markdown} onActiveSlideMarkdownChange={setMarkdown} />
             </div>
           </aside>
         </section>
       </main>
-      {imageOpen ? (
+      {mediaOpen ? (
         <div className="fixed inset-0 z-40">
           <button
-            aria-label={t.closeImageLibrary}
+            aria-label={t.closeMediaLibrary}
             className="absolute inset-0 bg-black/20"
-            onClick={() => setImageOpen(false)}
+            onClick={() => setMediaOpen(false)}
             type="button"
           />
           <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">{t.imagesTab}</h2>
-              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setImageOpen(false)} type="button">
+              <h2 className="text-lg font-black">{t.mediaTab}</h2>
+              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setMediaOpen(false)} type="button">
                 {t.close}
               </button>
             </div>
             <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              {t.uploadImage}
+              {t.uploadMedia}
               <input
-                accept="image/*"
+                accept="image/*,video/*"
                 className="sr-only"
-                disabled={uploadingImage}
+                disabled={uploadingMedia}
                 onChange={(event) => {
-                  uploadAndInsertImage(event.target.files?.[0] ?? null);
+                  uploadAndInsertMedia(event.target.files?.[0] ?? null);
                   event.currentTarget.value = "";
                 }}
                 type="file"
               />
             </label>
-            {imageError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{imageError}</p> : null}
+            {mediaError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{mediaError}</p> : null}
             <div className="grid gap-2">
-              {imageLoading ? <LoadingBlock label={t.imagesLoading} /> : null}
-              {!imageLoading && images.length ? (
-                images.map((image) => (
-                  <article className="rounded-md border border-line bg-white p-3" key={image.id}>
+              {mediaLoading ? <LoadingBlock label={t.mediaLoading} /> : null}
+              {!mediaLoading && media.length ? (
+                media.map((item) => (
+                  <article className="rounded-md border border-line bg-white p-3" key={item.id}>
                     <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img alt={image.filename} className="h-full w-full object-contain" src={image.url} />
+                      {item.contentType.startsWith("video/") ? (
+                        <video className="h-full w-full bg-black object-contain" controls preload="metadata" src={item.url} title={item.filename} />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img alt={item.filename} className="h-full w-full object-contain" src={item.url} />
+                      )}
                     </div>
-                    <h3 className="mt-3 truncate text-sm font-black">{image.filename}</h3>
+                    <h3 className="mt-3 truncate text-sm font-black">{item.filename}</h3>
                     <button
                       className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
-                      onClick={() => insertImage(image)}
+                      onClick={() => insertMedia(item)}
                       type="button"
                     >
                       {t.addToSharedSlide}
                     </button>
                     <button
                       className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
-                      onClick={() => copyImageMarkdown(image)}
+                      onClick={() => copyMediaMarkdown(item)}
                       type="button"
                     >
                       {t.copyMarkdown}
                     </button>
                   </article>
                 ))
-              ) : !imageLoading ? (
+              ) : !mediaLoading ? (
                 <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">{t.noImages}</p>
+                  <p className="text-sm text-stone-600">{t.noMedia}</p>
                 </div>
               ) : null}
             </div>

@@ -24,7 +24,8 @@ type SharedSlideSummary = {
   updatedAt: string;
 };
 
-type ImageSummary = {
+type MediaSummary = {
+  contentType: string;
   id: string;
   filename: string;
   markdown: string;
@@ -33,10 +34,10 @@ type ImageSummary = {
   url: string;
 };
 
-type DashboardTab = "decks" | "images" | "shared";
+type DashboardTab = "decks" | "media" | "shared";
 
 function parseDashboardTab(value: string | null): DashboardTab {
-  if (value === "images" || value === "shared") {
+  if (value === "media" || value === "shared") {
     return value;
   }
   return "decks";
@@ -54,9 +55,9 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const activeTab = parseDashboardTab(searchParams.get("tab"));
   const [decks, setDecks] = useState<DeckSummary[]>([]);
-  const [images, setImages] = useState<ImageSummary[]>([]);
+  const [media, setMedia] = useState<MediaSummary[]>([]);
   const [sharedSlides, setSharedSlides] = useState<SharedSlideSummary[]>([]);
-  const [copiedImageId, setCopiedImageId] = useState<string | null>(null);
+  const [copiedMediaId, setCopiedMediaId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [listLoading, setListLoading] = useState(true);
@@ -74,26 +75,26 @@ function DashboardContent() {
       setListLoading(true);
       try {
         const idToken = await token();
-        const [deckResponse, imageResponse, sharedSlideResponse] = await Promise.all([
+        const [deckResponse, mediaResponse, sharedSlideResponse] = await Promise.all([
           fetch("/api/presentations", {
             headers: { Authorization: `Bearer ${idToken}` },
           }),
-          fetch("/api/images", {
+          fetch("/api/media", {
             headers: { Authorization: `Bearer ${idToken}` },
           }),
           fetch("/api/shared-slides", {
             headers: { Authorization: `Bearer ${idToken}` },
           }),
         ]);
-        if (!deckResponse.ok || !imageResponse.ok || !sharedSlideResponse.ok) {
+        if (!deckResponse.ok || !mediaResponse.ok || !sharedSlideResponse.ok) {
           setError(t.listLoadFailed);
           return;
         }
         const deckData = (await deckResponse.json()) as { decks: DeckSummary[] };
-        const imageData = (await imageResponse.json()) as { images: ImageSummary[] };
+        const mediaData = (await mediaResponse.json()) as { media: MediaSummary[] };
         const sharedSlideData = (await sharedSlideResponse.json()) as { slides: SharedSlideSummary[] };
         setDecks(deckData.decks);
-        setImages(imageData.images);
+        setMedia(mediaData.media);
         setSharedSlides(sharedSlideData.slides);
       } catch {
         setError(t.listLoadFailed);
@@ -144,7 +145,7 @@ function DashboardContent() {
     }
   }
 
-  async function uploadImage(file: File | null) {
+  async function uploadMedia(file: File | null) {
     if (!file) return;
     setBusy(true);
     setError(null);
@@ -152,49 +153,49 @@ function DashboardContent() {
       const idToken = await token();
       const formData = new FormData();
       formData.set("file", file);
-      const response = await fetch("/api/images", {
+      const response = await fetch("/api/media", {
         method: "POST",
         headers: { Authorization: `Bearer ${idToken}` },
         body: formData,
       });
       if (!response.ok) {
-        throw new Error(t.imageUploadFailed);
+        throw new Error(t.mediaUploadFailed);
       }
-      const data = (await response.json()) as { image: ImageSummary };
-      setImages((currentImages) => [data.image, ...currentImages]);
+      const data = (await response.json()) as { media: MediaSummary };
+      setMedia((currentMedia) => [data.media, ...currentMedia]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.imageUploadFailed);
+      setError(err instanceof Error ? err.message : t.mediaUploadFailed);
     } finally {
       setBusy(false);
     }
   }
 
-  async function deleteImage(id: string) {
+  async function deleteMedia(id: string) {
     setBusy(true);
     setError(null);
     try {
       const idToken = await token();
-      const response = await fetch(`/api/images/${id}`, {
+      const response = await fetch(`/api/media/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
-        throw new Error(t.imageDeleteFailed);
+        throw new Error(t.mediaDeleteFailed);
       }
-      setImages((currentImages) => currentImages.filter((image) => image.id !== id));
+      setMedia((currentMedia) => currentMedia.filter((item) => item.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.imageDeleteFailed);
+      setError(err instanceof Error ? err.message : t.mediaDeleteFailed);
     } finally {
       setBusy(false);
     }
   }
 
-  async function copyImageMarkdown(image: ImageSummary) {
+  async function copyMediaMarkdown(item: MediaSummary) {
     setError(null);
     try {
-      await navigator.clipboard.writeText(image.markdown);
-      setCopiedImageId(image.id);
-      window.setTimeout(() => setCopiedImageId((currentId) => (currentId === image.id ? null : currentId)), 1200);
+      await navigator.clipboard.writeText(item.markdown);
+      setCopiedMediaId(item.id);
+      window.setTimeout(() => setCopiedMediaId((currentId) => (currentId === item.id ? null : currentId)), 1200);
     } catch {
       setError(t.copyMarkdownFailed);
     }
@@ -229,14 +230,14 @@ function DashboardContent() {
             <Link href="/shared-slides/new">
               <Button variant="primary">{t.createSharedSlide}</Button>
             </Link>
-            ) : activeTab === "images" ? (
+            ) : activeTab === "media" ? (
               <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                {t.uploadImage}
+                {t.uploadMedia}
                 <input
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="sr-only"
                   disabled={busy}
-                  onChange={(event) => uploadImage(event.target.files?.[0] ?? null)}
+                  onChange={(event) => uploadMedia(event.target.files?.[0] ?? null)}
                   type="file"
                 />
               </label>
@@ -257,8 +258,8 @@ function DashboardContent() {
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="decks">
               {t.deckTab}
             </Tabs.Tab>
-            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="images">
-              {t.imagesTab}
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="media">
+              {t.mediaTab}
             </Tabs.Tab>
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="shared">
               {t.sharedSlidesTab}
@@ -316,27 +317,31 @@ function DashboardContent() {
             </Card.Content>
           </Card>
         ) : null}
-        {!listLoading && activeTab === "images" && images.length ? (
+        {!listLoading && activeTab === "media" && media.length ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {images.map((image) => (
-              <Card className="border border-line bg-white/90 shadow-panel" key={image.id}>
+            {media.map((item) => (
+              <Card className="border border-line bg-white/90 shadow-panel" key={item.id}>
                 <Card.Content>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img alt={image.filename} className="aspect-video w-full rounded-lg bg-paper object-contain" src={image.url} />
-                <h2 className="mt-3 truncate text-base font-black">{image.filename}</h2>
-                <p className="mt-1 text-sm text-stone-600">{Math.ceil(image.size / 1024)} KB</p>
+                {item.contentType.startsWith("video/") ? (
+                  <video className="aspect-video w-full rounded-lg bg-black object-contain" controls preload="metadata" src={item.url} title={item.filename} />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img alt={item.filename} className="aspect-video w-full rounded-lg bg-paper object-contain" src={item.url} />
+                )}
+                <h2 className="mt-3 truncate text-base font-black">{item.filename}</h2>
+                <p className="mt-1 text-sm text-stone-600">{Math.ceil(item.size / 1024)} KB</p>
                 <div className="mt-3 flex items-center rounded-lg bg-stone-100">
-                  <code className="min-w-0 flex-1 truncate bg-transparent p-2 text-xs">{image.markdown}</code>
+                  <code className="min-w-0 flex-1 truncate bg-transparent p-2 text-xs">{item.markdown}</code>
                   <Tooltip>
                   <Button
                     isIconOnly
-                    aria-label={`${t.copyMarkdown}: ${image.filename}`}
+                    aria-label={`${t.copyMarkdown}: ${item.filename}`}
                     className="mr-1"
                     size="sm"
                     variant="ghost"
-                    onPress={() => copyImageMarkdown(image)}
+                    onPress={() => copyMediaMarkdown(item)}
                   >
-                    {copiedImageId === image.id ? (
+                    {copiedMediaId === item.id ? (
                       <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
                         <path d="M20 6 9 17l-5-5" />
                       </svg>
@@ -355,7 +360,7 @@ function DashboardContent() {
                   isDisabled={busy}
                   size="sm"
                   variant="outline"
-                  onPress={() => deleteImage(image.id)}
+                  onPress={() => deleteMedia(item.id)}
                 >
                   {t.delete}
                 </Button>
@@ -364,17 +369,17 @@ function DashboardContent() {
             ))}
           </div>
         ) : null}
-        {!listLoading && activeTab === "images" && !images.length ? (
+        {!listLoading && activeTab === "media" && !media.length ? (
           <Card className="border border-dashed border-line bg-white/80">
             <Card.Content className="items-center p-10 text-center">
-            <p className="mb-4 font-semibold text-stone-700">{t.noImages}</p>
+            <p className="mb-4 font-semibold text-stone-700">{t.noMedia}</p>
             <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
-              {t.uploadImage}
+              {t.uploadMedia}
               <input
-                accept="image/*"
+                accept="image/*,video/*"
                 className="sr-only"
                 disabled={busy}
-                onChange={(event) => uploadImage(event.target.files?.[0] ?? null)}
+                onChange={(event) => uploadMedia(event.target.files?.[0] ?? null)}
                 type="file"
               />
             </label>

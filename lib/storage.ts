@@ -31,9 +31,9 @@ export function deckAssetPath(deckId: string, filename: string) {
   return `decks/${deckId}/assets/${Date.now()}-${safeName}`;
 }
 
-export function imageLibraryPath(userId: string, filename: string) {
+export function mediaLibraryPath(userId: string, filename: string) {
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `users/${userId}/images/${Date.now()}-${safeName}`;
+  return `users/${userId}/media/${Date.now()}-${safeName}`;
 }
 
 function gcsBucketName() {
@@ -121,7 +121,7 @@ export async function deleteObject(storagePath: string) {
 
 export async function createSignedReadUrl(storagePath: string, expiresInMinutes = 15) {
   if (storageBackend() === "s3") {
-    return `/api/images/file?path=${encodeURIComponent(storagePath)}`;
+    return `/api/media/file?path=${encodeURIComponent(storagePath)}`;
   }
 
   const [url] = await gcsStorage

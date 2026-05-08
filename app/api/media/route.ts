@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { imageLibraryPath, uploadObject } from "@/lib/storage";
+import { mediaLibraryPath, uploadObject } from "@/lib/storage";
 
-const allowedImageTypes = new Set(["image/gif", "image/jpeg", "image/png", "image/svg+xml", "image/webp"]);
-const maxImageSize = 5 * 1024 * 1024;
+const allowedStillMediaTypes = new Set(["image/gif", "image/jpeg", "image/png", "image/svg+xml", "image/webp"]);
+const allowedVideoTypes = new Set(["video/mp4", "video/ogg", "video/quicktime", "video/webm"]);
+const maxStillMediaSize = 5 * 1024 * 1024;
+const maxVideoSize = 100 * 1024 * 1024;
 
 function apiError(error: unknown) {
   if (error instanceof Response) {
@@ -22,14 +24,19 @@ function escapeAttribute(value: string) {
     .replace(/>/g, "&gt;");
 }
 
-function imageMarkdown(image: { filename: string; id: string }) {
-  return `<img src="/api/images/${image.id}/file" alt="${escapeAttribute(image.filename)}" style="position:absolute;left:29%;top:33%;width:42%;height:34%;object-fit:contain;">`;
+function mediaMarkdown(media: { contentType: string; filename: string; id: string }) {
+  const src = `/api/media/${media.id}/file`;
+  const style = "position:absolute;left:29%;top:33%;width:42%;height:34%;object-fit:contain;";
+  if (media.contentType.startsWith("video/")) {
+    return `<video controls src="${src}" title="${escapeAttribute(media.filename)}" style="${style}"></video>`;
+  }
+  return `<img src="${src}" alt="${escapeAttribute(media.filename)}" style="${style}">`;
 }
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request);
-    const images = await prisma.imageLibraryItem.findMany({
+    const media = await prisma.mediaLibraryItem.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
       select: {
@@ -42,10 +49,10 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      images: images.map((image) => ({
-        ...image,
-        markdown: imageMarkdown(image),
-        url: `/api/images/${image.id}/file`,
+      media: media.map((item) => ({
+        ...item,
+        markdown: mediaMarkdown(item),
+        url: `/api/media/${item.id}/file`,
       })),
     });
   } catch (error) {
@@ -61,18 +68,19 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
     }
-    if (!allowedImageTypes.has(file.type)) {
-      return NextResponse.json({ error: "unsupported image type" }, { status: 400 });
+    if (!allowedStillMediaTypes.has(file.type) && !allowedVideoTypes.has(file.type)) {
+      return NextResponse.json({ error: "unsupported media type" }, { status: 400 });
     }
-    if (file.size > maxImageSize) {
-      return NextResponse.json({ error: "image is too large" }, { status: 400 });
+    const maxSize = file.type.startsWith("video/") ? maxVideoSize : maxStillMediaSize;
+    if (file.size > maxSize) {
+      return NextResponse.json({ error: "media is too large" }, { status: 400 });
     }
 
     const body = Buffer.from(await file.arrayBuffer());
-    const storagePath = imageLibraryPath(user.id, file.name);
+    const storagePath = mediaLibraryPath(user.id, file.name);
     await uploadObject(storagePath, body, file.type);
 
-    const image = await prisma.imageLibraryItem.create({
+    const media = await prisma.mediaLibraryItem.create({
       data: {
         userId: user.id,
         filename: file.name,
@@ -91,10 +99,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        image: {
-          ...image,
-          markdown: imageMarkdown(image),
-          url: `/api/images/${image.id}/file`,
+        media: {
+          ...media,
+          markdown: mediaMarkdown(media),
+          url: `/api/media/${media.id}/file`,
         },
       },
       { status: 201 },

@@ -15,18 +15,18 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   try {
     const params = await context.params;
     const user = await requireUser(request);
-    const image = await prisma.imageLibraryItem.findFirst({
+    const media = await prisma.mediaLibraryItem.findFirst({
       where: { id: params.id, userId: user.id },
       select: { id: true, storagePath: true },
     });
 
-    if (!image) {
+    if (!media) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await deleteObject(image.storagePath);
-    await prisma.imageLibraryItem.delete({
-      where: { id: image.id },
+    await deleteObject(media.storagePath);
+    await prisma.mediaLibraryItem.delete({
+      where: { id: media.id },
     });
 
     return new Response(null, { status: 204 });

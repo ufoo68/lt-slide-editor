@@ -28,7 +28,7 @@ model User {
 
   decks        Deck[]
   slideLibrary SlideLibraryItem[]
-  imageLibrary ImageLibraryItem[]
+  mediaLibrary MediaLibraryItem[]
 }
 
 model Deck {
@@ -99,7 +99,7 @@ model SlideLibraryItem {
   @@index([userId, updatedAt])
 }
 
-model ImageLibraryItem {
+model MediaLibraryItem {
   id          String   @id @default(cuid())
   userId      String
   filename    String
@@ -112,4 +112,5 @@ model ImageLibraryItem {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
+  @@map("ImageLibraryItem")
 }

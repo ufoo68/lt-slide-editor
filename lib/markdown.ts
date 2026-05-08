@@ -30,8 +30,8 @@ const md = new MarkdownIt({
   },
 });
 
-function parseImageLayout(title: string | null) {
-  const match = title?.match(/\blt-image:([^\s"]+)/);
+function parseMediaLayout(title: string | null) {
+  const match = title?.match(/\blt-media:([^\s"]+)/);
   if (!match) {
     return null;
   }
@@ -51,10 +51,10 @@ function parseImageLayout(title: string | null) {
     return null;
   }
 
-  return normalizeImageLayout({ h, w, x, y });
+  return normalizeMediaLayout({ h, w, x, y });
 }
 
-function normalizeImageLayout(layout: { h: number; w: number; x: number; y: number }) {
+function normalizeMediaLayout(layout: { h: number; w: number; x: number; y: number }) {
   return {
     h: Math.min(Math.max(layout.h, 5), 100),
     w: Math.min(Math.max(layout.w, 5), 100),
@@ -63,7 +63,7 @@ function normalizeImageLayout(layout: { h: number; w: number; x: number; y: numb
   };
 }
 
-function parseImageStyle(style: string | undefined) {
+function parseMediaStyle(style: string | undefined) {
   const layout = Object.fromEntries(
     (style ?? "")
       .split(";")
@@ -79,10 +79,10 @@ function parseImageStyle(style: string | undefined) {
     return null;
   }
 
-  return normalizeImageLayout({ h, w, x, y });
+  return normalizeMediaLayout({ h, w, x, y });
 }
 
-function imageStyle(layout: { h: number; w: number; x: number; y: number }) {
+function mediaStyle(layout: { h: number; w: number; x: number; y: number }) {
   return `position:absolute;left:${layout.x}%;top:${layout.y}%;width:${layout.w}%;height:${layout.h}%;object-fit:contain;`;
 }
 
@@ -99,31 +99,33 @@ md.renderer.rules.image = (tokens, idx, options, env) => {
   const src = token.attrGet("src") ?? "";
   const alt = token.content || token.attrGet("alt") || "";
   const title = token.attrGet("title");
-  const layout = parseImageLayout(title);
-  const imageIndex = typeof env.imageIndex === "number" ? env.imageIndex : 0;
-  env.imageIndex = imageIndex + 1;
+  const layout = parseMediaLayout(title);
+  const mediaIndex = typeof env.mediaIndex === "number" ? env.mediaIndex : 0;
+  env.mediaIndex = mediaIndex + 1;
 
   const resolvedLayout = layout ?? { h: 34, w: 42, x: 29, y: 33 };
 
   const titleAttr = title && !layout ? ` title="${escapeHtml(title)}"` : "";
   return [
     `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${titleAttr}`,
-    ` class="slide-image-absolute"`,
-    ` data-slide-image-index="${imageIndex}"`,
-    ` data-image-layout="x=${resolvedLayout.x};y=${resolvedLayout.y};w=${resolvedLayout.w};h=${resolvedLayout.h}"`,
-    ` style="${imageStyle(resolvedLayout)}">`,
+    ` class="slide-media-absolute"`,
+    ` data-slide-media-index="${mediaIndex}"`,
+    ` data-media-layout="x=${resolvedLayout.x};y=${resolvedLayout.y};w=${resolvedLayout.w};h=${resolvedLayout.h}"`,
+    ` style="${mediaStyle(resolvedLayout)}">`,
   ].join("");
 };
 
 function sanitizeOptions(): sanitizeHtml.IOptions {
-  let imageIndex = 0;
+  let mediaIndex = 0;
 
   return {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "h1", "h2", "pre", "code", "span"]),
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "video", "source", "h1", "h2", "pre", "code", "span"]),
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
       a: ["href", "name", "target", "rel"],
-      img: ["src", "alt", "title", "class", "data-slide-image-index", "data-image-layout", "style"],
+      img: ["src", "alt", "title", "class", "data-slide-media-index", "data-media-layout", "style"],
+      video: ["src", "title", "class", "controls", "playsinline", "preload", "data-slide-media-index", "data-media-layout", "style"],
+      source: ["src", "type"],
       code: ["class"],
       span: ["class"],
       pre: ["class"],
@@ -137,23 +139,50 @@ function sanitizeOptions(): sanitizeHtml.IOptions {
         top: [/^\d+(?:\.\d+)?%$/],
         width: [/^\d+(?:\.\d+)?%$/],
       },
+      video: {
+        height: [/^\d+(?:\.\d+)?%$/],
+        left: [/^\d+(?:\.\d+)?%$/],
+        "object-fit": [/^contain$/],
+        position: [/^absolute$/],
+        top: [/^\d+(?:\.\d+)?%$/],
+        width: [/^\d+(?:\.\d+)?%$/],
+      },
     },
     allowedSchemes: ["http", "https", "mailto", "data"],
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
       img: (tagName, attribs) => {
-        const layout = parseImageStyle(attribs.style) ?? parseImageLayout(attribs.title ?? null) ?? { h: 34, w: 42, x: 29, y: 33 };
-        const nextImageIndex = imageIndex;
-        imageIndex += 1;
+        const layout = parseMediaStyle(attribs.style) ?? parseMediaLayout(attribs.title ?? null) ?? { h: 34, w: 42, x: 29, y: 33 };
+        const nextMediaIndex = mediaIndex;
+        mediaIndex += 1;
 
         return {
           tagName,
           attribs: {
             ...attribs,
-            class: [attribs.class, "slide-image-absolute"].filter(Boolean).join(" "),
-            "data-slide-image-index": String(nextImageIndex),
-            "data-image-layout": `x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`,
-            style: imageStyle(layout),
+            class: [attribs.class, "slide-media-absolute"].filter(Boolean).join(" "),
+            "data-slide-media-index": String(nextMediaIndex),
+            "data-media-layout": `x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`,
+            style: mediaStyle(layout),
+          },
+        };
+      },
+      video: (tagName, attribs) => {
+        const layout = parseMediaStyle(attribs.style) ?? { h: 34, w: 42, x: 29, y: 33 };
+        const nextMediaIndex = mediaIndex;
+        mediaIndex += 1;
+
+        return {
+          tagName,
+          attribs: {
+            ...attribs,
+            class: [attribs.class, "slide-media-absolute"].filter(Boolean).join(" "),
+            controls: "controls",
+            "data-slide-media-index": String(nextMediaIndex),
+            "data-media-layout": `x=${layout.x};y=${layout.y};w=${layout.w};h=${layout.h}`,
+            playsinline: "playsinline",
+            preload: attribs.preload ?? "metadata",
+            style: mediaStyle(layout),
           },
         };
       },
@@ -178,7 +207,7 @@ export function joinEditableSlides(slides: string[]) {
 }
 
 export function renderMarkdown(markdown: string) {
-  return sanitizeHtml(md.render(markdown, { imageIndex: 0 }), sanitizeOptions());
+  return sanitizeHtml(md.render(markdown, { mediaIndex: 0 }), sanitizeOptions());
 }
 
 export function slideStats(markdown: string): SlideStats {
