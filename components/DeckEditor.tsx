@@ -428,7 +428,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   return (
     <>
       <Header />
-      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-5">
+      <main className="mx-auto flex h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-4 overflow-hidden px-4 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link className="text-sm font-semibold text-primary" href="/dashboard">
@@ -496,8 +496,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         {status ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)]">
-          <div className="grid gap-3">
+        <section className="grid min-h-0 flex-1 items-start gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-3 lg:h-full">
             <div className="flex items-center justify-between">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
               <span className="text-sm font-semibold text-stone-600">
@@ -545,7 +545,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             ) : null}
             {editMode === "page" ? (
               <textarea
-                className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+                className="min-h-[24rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
                 onChange={(event) => updateActiveSlide(event.target.value)}
                 spellCheck={false}
@@ -553,7 +553,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               />
             ) : (
               <textarea
-                className="min-h-[68vh] resize-y rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint"
+                className="min-h-[24rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
                 onChange={(event) => setMarkdown(event.target.value)}
                 spellCheck={false}
@@ -561,7 +561,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               />
             )}
           </div>
-          <aside className="grid content-start gap-4">
+          <aside className="grid min-h-0 gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)]">
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
@@ -580,8 +580,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 onActiveSlideMarkdownChange={updateActiveSlide}
               />
             </div>
-            <Card className="border border-line bg-white/90 shadow-panel">
-              <Card.Content>
+            <Card className="min-h-0 overflow-hidden border border-line bg-white/90 shadow-panel">
+              <Card.Content className="flex h-full min-h-0 flex-col">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.aiReview}</h2>
                   <Button
@@ -595,7 +595,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 </div>
                 {aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{aiReviewError}</p> : null}
                 {aiReview ? (
-                  <div className="grid gap-3">
+                  <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto pr-1">
                     <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-900">{aiReview.summary}</p>
                     {aiReview.suggestions.length ? (
                       <ul className="grid gap-2">
