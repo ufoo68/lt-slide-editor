@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@heroui/react";
+import { Button, Tabs } from "@heroui/react";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { SlidePreview } from "@/components/SlidePreview";
@@ -63,6 +63,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview">("markdown");
   const [slideLoading, setSlideLoading] = useState(mode === "edit");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
@@ -239,28 +240,49 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   return (
     <>
       <Header />
-      <main className="mx-auto flex h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-4 overflow-hidden px-4 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <Link className="text-sm font-semibold text-primary" href="/dashboard">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
+        <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2 sm:block">
+            <Link
+              aria-label={t.dashboard}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-foreground sm:hidden"
+              href="/dashboard"
+            >
+              <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </Link>
+            <Link className="hidden text-sm font-semibold text-primary sm:inline" href="/dashboard">
               {t.dashboard}
             </Link>
             <input
-              className="mt-1 block w-full min-w-[18rem] bg-transparent text-2xl font-black outline-none"
+              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:mt-1 sm:w-full sm:text-2xl lg:min-w-[18rem]"
               onChange={(event) => setTitle(event.target.value)}
               value={title}
             />
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onPress={() => setMediaOpen(true)}>
-              {t.mediaTab}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+            <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
+              <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <rect height="18" rx="2" width="18" x="3" y="3" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+              </svg>
+              <span className="hidden sm:inline">{t.mediaTab}</span>
             </Button>
             <Button
+              aria-label={t.save}
+              className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3"
               isDisabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
               variant="primary"
               onPress={saveSlide}
             >
-              {t.save}
+              <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                <path d="M17 21v-8H7v8" />
+                <path d="M7 3v5h8" />
+              </svg>
+              <span className="hidden sm:inline">{t.save}</span>
             </Button>
           </div>
         </div>
@@ -271,14 +293,42 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">{t.sharedSlideSeparatorWarning}</p>
         ) : null}
 
-        <section className="grid min-h-0 flex-1 items-start gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
+        <section className="grid min-h-0 flex-1 content-start gap-1.5 lg:hidden">
+          <Tabs
+            aria-label={`${t.fullMarkdown} / ${t.preview}`}
+            selectedKey={mobilePanel}
+            onSelectionChange={(key) => setMobilePanel(key === "preview" ? "preview" : "markdown")}
+          >
+            <Tabs.List className="grid grid-cols-2 rounded-md border border-line bg-white p-1">
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="markdown">
+                {t.fullMarkdown}
+              </Tabs.Tab>
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="preview">
+                {t.preview}
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+          {mobilePanel === "markdown" ? (
+            <textarea
+              className="min-h-[calc(100dvh-14.5rem)] resize-none rounded-lg border border-line bg-[#fffdf8] p-3 font-mono text-sm leading-6 outline-mint"
+              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+              onChange={(event) => setMarkdown(event.target.value)}
+              spellCheck={false}
+              value={markdown}
+            />
+          ) : (
+            <SlidePreview compact markdown={markdown} />
+          )}
+        </section>
+
+        <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
           <div className="flex min-h-0 flex-col gap-3 lg:h-full">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
               <span className="text-sm font-semibold text-stone-600">1 slide</span>
             </div>
             <textarea
-              className="min-h-[24rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint lg:min-h-0 lg:flex-1"
+              className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
               onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
               onChange={(event) => setMarkdown(event.target.value)}
               spellCheck={false}
@@ -287,7 +337,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           </div>
           <aside className="grid min-h-0 gap-4 lg:h-full lg:content-start">
             <div>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
                 <span className="text-sm font-semibold text-stone-600">{t.sharedSlidesTab}</span>
               </div>

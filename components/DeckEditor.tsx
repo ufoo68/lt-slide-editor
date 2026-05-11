@@ -110,6 +110,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [editMode, setEditMode] = useState<"page" | "full">("page");
+  const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview" | "review">("markdown");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
   const [status, setStatus] = useState<string | null>(null);
@@ -429,38 +430,59 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   return (
     <>
       <Header />
-      <main className="mx-auto flex h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-4 overflow-hidden px-4 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <Link className="text-sm font-semibold text-primary" href="/dashboard">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
+        <div className="grid gap-3 lg:flex lg:flex-wrap lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-2 lg:block">
+            <Link
+              aria-label={t.dashboard}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-foreground lg:hidden"
+              href="/dashboard"
+            >
+              <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </Link>
+            <Link className="hidden text-sm font-semibold text-primary lg:inline" href="/dashboard">
               {t.dashboard}
             </Link>
             <input
-              className="mt-1 block w-full min-w-[18rem] bg-transparent text-2xl font-black outline-none"
+              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:text-xl lg:mt-1 lg:w-full lg:min-w-[18rem] lg:text-2xl"
               onChange={(event) => setTitle(event.target.value)}
               value={title}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 lg:grid lg:grid-cols-2 xl:flex xl:flex-wrap xl:justify-end">
             {deck?.visibility === "public" ? (
-              <Link href={`/view/${deck.slug}`} target="_blank">
-                <Button size="sm" variant="outline">{t.openPublicUrl}</Button>
+              <Link className="shrink-0 lg:col-span-2 xl:col-span-1" href={`/view/${deck.slug}`} target="_blank">
+                <Button aria-label={t.openPublicUrl} className="h-9 w-9 min-w-9 px-0 xl:h-10 xl:w-auto xl:px-3" size="sm" variant="outline">
+                  <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M15 3h6v6" />
+                    <path d="M10 14 21 3" />
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  </svg>
+                  <span className="hidden xl:inline">{t.openPublicUrl}</span>
+                </Button>
               </Link>
             ) : null}
-            <label className="flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold">
-              {t.presentationTime}
+            <label className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-white px-1.5 text-sm font-semibold xl:h-10 lg:col-span-2 xl:col-span-1">
+              <span className="sr-only">{t.presentationTime}</span>
+              <svg aria-hidden="true" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
               <input
-                className="h-8 w-16 bg-transparent text-right outline-none"
+                aria-label={t.presentationTime}
+                className="h-8 w-8 bg-transparent text-right outline-none sm:w-12"
                 max={180}
                 min={1}
                 onChange={(event) => setPresentationMinutes(Math.max(1, Math.min(180, Number(event.target.value) || 1)))}
                 type="number"
                 value={presentationMinutes}
               />
-              {t.minutesUnit}
+              <span className="text-xs">{t.minutesUnit}</span>
             </label>
             <Switch
-              className="flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold"
+              className="flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-2 text-sm font-semibold xl:h-10 xl:px-3 xl:justify-start"
               isSelected={visibility === "public"}
               size="sm"
               onChange={(selected) => setVisibility(selected ? "public" : "private")}
@@ -478,18 +500,35 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               </Switch.Control>
               {t.public}
             </Switch>
-            <Button variant="outline" onPress={() => setMediaOpen(true)}>
-              {t.mediaTab}
+            <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
+              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <rect height="18" rx="2" width="18" x="3" y="3" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+              </svg>
+              <span className="hidden xl:inline">{t.mediaTab}</span>
             </Button>
-            <Button variant="outline" onPress={() => setLibraryOpen(true)}>
-              {t.sharedSlidesTab}
+            <Button aria-label={t.sharedSlidesTab} className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setLibraryOpen(true)}>
+              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <rect height="14" rx="2" width="18" x="3" y="5" />
+                <path d="M7 9h10" />
+                <path d="M7 13h6" />
+              </svg>
+              <span className="hidden xl:inline">{t.sharedSlidesTab}</span>
             </Button>
             <Button
+              aria-label={t.save}
+              className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3"
               isDisabled={busy || !title.trim() || !hasUnsavedChanges}
               variant="primary"
               onPress={save}
             >
-              {t.save}
+              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                <path d="M17 21v-8H7v8" />
+                <path d="M7 3v5h8" />
+              </svg>
+              <span className="hidden xl:inline">{t.save}</span>
             </Button>
           </div>
         </div>
@@ -497,9 +536,120 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         {status ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
 
-        <section className="grid min-h-0 flex-1 items-start gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
+        <section className="grid min-h-0 flex-1 content-start gap-1.5 lg:hidden">
+          <Tabs
+            aria-label={`${t.fullMarkdown} / ${t.preview} / ${t.aiReview}`}
+            selectedKey={mobilePanel}
+            onSelectionChange={(key) => {
+              if (key === "preview" || key === "review") {
+                setMobilePanel(key);
+                return;
+              }
+              setMobilePanel("markdown");
+            }}
+          >
+            <Tabs.List className="grid grid-cols-3 rounded-md border border-line bg-white p-1">
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="markdown">
+                {t.fullMarkdown}
+              </Tabs.Tab>
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="preview">
+                {t.preview}
+              </Tabs.Tab>
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="review">
+                {t.runAiReview}
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+          {mobilePanel === "markdown" ? (
+            <textarea
+              className="min-h-[calc(100dvh-14.5rem)] resize-none rounded-lg border border-line bg-[#fffdf8] p-3 font-mono text-sm leading-6 outline-mint"
+              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+              onChange={(event) => setMarkdown(event.target.value)}
+              spellCheck={false}
+              value={markdown}
+            />
+          ) : mobilePanel === "preview" ? (
+            <div className="grid content-start gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
+                <Button
+                  aria-label={t.presentationView}
+                  className="h-10 w-10 min-w-10 px-0"
+                  size="sm"
+                  variant="outline"
+                  onPress={() => setPresentationPreviewOpen(true)}
+                >
+                  <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect height="14" rx="2" width="20" x="2" y="3" />
+                    <path d="M8 21h8" />
+                    <path d="M12 17v4" />
+                  </svg>
+                </Button>
+              </div>
+              <SlidePreview
+                activeIndex={safeActiveSlideIndex}
+                compact
+                markdown={markdown}
+                onActiveIndexChange={setActiveSlideIndex}
+              />
+            </div>
+          ) : (
+            <div className="grid content-start gap-2 rounded-lg border border-line bg-white/90 p-3 shadow-panel">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.aiReview}</h2>
+                <Button
+                  aria-label={t.runAiReview}
+                  className="h-9 px-3"
+                  isDisabled={aiReviewLoading || !markdown.trim()}
+                  size="sm"
+                  variant="outline"
+                  onPress={reviewWithAi}
+                >
+                  {aiReviewLoading ? t.aiReviewing : t.runAiReview}
+                </Button>
+              </div>
+              {aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{aiReviewError}</p> : null}
+              {aiReview ? (
+                <div className="grid max-h-[calc(100dvh-17rem)] gap-3 overflow-y-auto pr-1">
+                  <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-900">{aiReview.summary}</p>
+                  {aiReview.suggestions.length ? (
+                    <ul className="grid gap-2">
+                      {aiReview.suggestions.map((suggestion, index) => (
+                        <li className="rounded-md border border-line bg-white p-3 text-sm" key={`${suggestion.message}-${index}`}>
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded px-2 py-0.5 text-xs font-black uppercase ${
+                                suggestion.severity === "high"
+                                  ? "bg-red-100 text-red-800"
+                                  : suggestion.severity === "medium"
+                                    ? "bg-amber-100 text-amber-900"
+                                    : "bg-emerald-100 text-emerald-800"
+                              }`}
+                            >
+                              {t.aiSeverity[suggestion.severity]}
+                            </span>
+                            {suggestion.slide ? (
+                              <span className="text-xs font-semibold text-stone-500">
+                                {t.slidePage} {suggestion.slide}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-stone-700">{suggestion.message}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : !aiReviewError ? (
+                <p className="text-sm text-stone-600">{t.aiReviewEmpty}</p>
+              ) : null}
+            </div>
+          )}
+        </section>
+
+        <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
           <div className="flex min-h-0 flex-col gap-3 lg:h-full">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
               <span className="text-sm font-semibold text-stone-600">
                 {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} ${language === "ja" ? "slides" : "slides"}`}
@@ -520,9 +670,10 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               </Tabs.List>
             </Tabs>
             {editMode === "page" ? (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button
+                    className="w-full sm:w-auto"
                     isDisabled={safeActiveSlideIndex === 0}
                     size="sm"
                     variant="outline"
@@ -531,6 +682,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     {t.previousPage}
                   </Button>
                   <Button
+                    className="w-full sm:w-auto"
                     isDisabled={!activeSlideMarkdown.trim()}
                     size="sm"
                     variant="outline"
@@ -539,14 +691,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                     {t.nextPage}
                   </Button>
                 </div>
-                <Button size="sm" variant="outline" onPress={deleteActiveSlide}>
+                <Button className="w-full sm:w-auto" size="sm" variant="outline" onPress={deleteActiveSlide}>
                   {t.deletePage}
                 </Button>
               </div>
             ) : null}
             {editMode === "page" ? (
               <textarea
-                className="min-h-[24rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint lg:min-h-0 lg:flex-1"
+                className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
                 onChange={(event) => updateActiveSlide(event.target.value)}
                 spellCheck={false}
@@ -554,7 +706,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               />
             ) : (
               <textarea
-                className="min-h-[24rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint lg:min-h-0 lg:flex-1"
+                className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
                 onChange={(event) => setMarkdown(event.target.value)}
                 spellCheck={false}
@@ -564,11 +716,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           </div>
           <aside className="grid min-h-0 gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)]">
             <div>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
-                  <Button size="sm" variant="outline" onPress={() => setPresentationPreviewOpen(true)}>
+                  <Button className="w-full sm:w-auto" size="sm" variant="outline" onPress={() => setPresentationPreviewOpen(true)}>
                     {t.presentationView}
                   </Button>
                 </div>

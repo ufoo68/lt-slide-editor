@@ -215,34 +215,34 @@ function DashboardContent() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-black">{t.decksTitle}</h1>
-            <p className="mt-1 text-sm text-stone-600">{user.email}</p>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black sm:text-3xl">{t.decksTitle}</h1>
+            <p className="mt-1 truncate text-sm text-stone-600">{user.email}</p>
           </div>
-          <div className="flex justify-end">
+          <div className="flex w-full justify-stretch sm:w-auto sm:justify-end">
             {(() => {
               switch (activeTab) {
                 case "decks":
                   return (
-                    <Link href="/presentations/new">
-                      <Button variant="primary">
+                    <Link className="w-full sm:w-auto" href="/presentations/new">
+                      <Button className="w-full sm:w-auto" variant="primary">
                         {t.createDeck}
                       </Button>
                     </Link>
                   );
                 case "shared":
                   return (
-                    <Link href="/shared-slides/new">
-                      <Button variant="primary">
+                    <Link className="w-full sm:w-auto" href="/shared-slides/new">
+                      <Button className="w-full sm:w-auto" variant="primary">
                         {t.createSharedSlide}
                       </Button>
                     </Link>
                   );
                 case "media":
                   return (
-                    <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                    <label className="inline-flex w-full cursor-pointer justify-center rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm sm:w-auto">
                       {t.uploadMedia}
                       <input
                         accept="image/*,video/*"
@@ -257,8 +257,8 @@ function DashboardContent() {
                   );
                 default:
                   return (
-                    <Link href="/presentations/new">
-                      <Button variant="primary">
+                    <Link className="w-full sm:w-auto" href="/presentations/new">
+                      <Button className="w-full sm:w-auto" variant="primary">
                         {t.createDeck}
                       </Button>
                     </Link>
@@ -269,11 +269,11 @@ function DashboardContent() {
         </div>
         <Tabs
           aria-label={t.decksTitle}
-          className="mb-5"
+          className="mb-5 overflow-x-auto"
           selectedKey={activeTab}
           onSelectionChange={(key) => changeTab(key as DashboardTab)}
         >
-          <Tabs.List className="rounded-md border border-line bg-white p-1">
+          <Tabs.List className="min-w-max rounded-md border border-line bg-white p-1">
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="decks">
               {t.deckTab}
             </Tabs.Tab>
@@ -292,9 +292,9 @@ function DashboardContent() {
             {decks.map((deck) => (
               <Card className="border border-line bg-white/90 shadow-panel" key={deck.id}>
                 <Card.Content>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-black">{deck.title}</h2>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="truncate text-lg font-black sm:text-xl">{deck.title}</h2>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-600">
                       <Chip color={deck.visibility === "public" ? "accent" : "default"} size="sm" variant="soft">
                         {deck.visibility === "public" ? t.public : t.private}
@@ -302,13 +302,14 @@ function DashboardContent() {
                       <span>{t.updated}: {new Date(deck.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}</span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                     {deck.visibility === "public" ? (
                       <Link href={`/view/${deck.slug}`} target="_blank">
-                        <Button size="sm" variant="outline">{t.view}</Button>
+                        <Button className="w-full sm:w-auto" size="sm" variant="outline">{t.view}</Button>
                       </Link>
                     ) : null}
                     <Button
+                      className="w-full sm:w-auto"
                       isDisabled={busy}
                       size="sm"
                       variant="outline"
@@ -317,7 +318,7 @@ function DashboardContent() {
                       {t.delete}
                     </Button>
                     <Link href={`/presentations/${deck.id}/edit`}>
-                      <Button size="sm" variant="primary">{t.edit}</Button>
+                      <Button className="w-full sm:w-auto" size="sm" variant="primary">{t.edit}</Button>
                     </Link>
                   </div>
                 </div>
@@ -328,7 +329,7 @@ function DashboardContent() {
         ) : null}
         {!listLoading && activeTab === "decks" && !decks.length ? (
           <Card className="border border-dashed border-line bg-white/80">
-            <Card.Content className="items-center p-10 text-center">
+            <Card.Content className="items-center p-6 text-center sm:p-10">
             <p className="mb-4 font-semibold text-stone-700">{t.noDecks}</p>
             <Link href="/presentations/new">
               <Button variant="primary">{t.createDeck}</Button>
@@ -375,7 +376,7 @@ function DashboardContent() {
                   </Tooltip>
                 </div>
                 <Button
-                  className="mt-3 w-fit"
+                  className="mt-3 w-full sm:w-fit"
                   isDisabled={busy}
                   size="sm"
                   variant="outline"
@@ -390,7 +391,7 @@ function DashboardContent() {
         ) : null}
         {!listLoading && activeTab === "media" && !media.length ? (
           <Card className="border border-dashed border-line bg-white/80">
-            <Card.Content className="items-center p-10 text-center">
+            <Card.Content className="items-center p-6 text-center sm:p-10">
             <p className="mb-4 font-semibold text-stone-700">{t.noMedia}</p>
             <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
               {t.uploadMedia}
@@ -410,16 +411,17 @@ function DashboardContent() {
             {sharedSlides.map((slide) => (
               <Card className="border border-line bg-white/90 shadow-panel" key={slide.id}>
                 <Card.Content>
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <h2 className="text-xl font-black">{slide.title}</h2>
+                    <h2 className="truncate text-lg font-black sm:text-xl">{slide.title}</h2>
                     <p className="mt-1 text-sm text-stone-600">
                       {t.updated}: {new Date(slide.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}
                     </p>
                     <p className="mt-2 truncate text-sm text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ")}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                     <Button
+                      className="w-full sm:w-auto"
                       isDisabled={busy}
                       size="sm"
                       variant="outline"
@@ -428,7 +430,7 @@ function DashboardContent() {
                       {t.delete}
                     </Button>
                     <Link href={`/shared-slides/${slide.id}/edit`}>
-                      <Button size="sm" variant="primary">{t.edit}</Button>
+                      <Button className="w-full sm:w-auto" size="sm" variant="primary">{t.edit}</Button>
                     </Link>
                   </div>
                 </div>
@@ -439,7 +441,7 @@ function DashboardContent() {
         ) : null}
         {!listLoading && activeTab === "shared" && !sharedSlides.length ? (
           <Card className="border border-dashed border-line bg-white/80">
-            <Card.Content className="items-center p-10 text-center">
+            <Card.Content className="items-center p-6 text-center sm:p-10">
             <p className="mb-4 font-semibold text-stone-700">{t.noSharedSlides}</p>
             <Link href="/shared-slides/new">
               <Button variant="primary">{t.createSharedSlide}</Button>

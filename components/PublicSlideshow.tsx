@@ -156,14 +156,14 @@ export function PublicSlideshow({
   return (
     <main className="min-h-screen bg-ink text-white">
       <div className="flex min-h-screen flex-col">
-        <header className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-          <div className="min-w-0">
+        <header className="flex min-h-16 flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0 self-stretch sm:self-auto">
             <h1 className="truncate text-lg font-black">{title}</h1>
             <p className="text-xs font-semibold text-white/55">{t.updatedLabel} {updatedAt}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-4 items-center gap-2 sm:flex">
             <div
-              className={`flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-bold ${
+              className={`col-span-4 flex h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm font-bold sm:col-span-1 sm:justify-start ${
                 displayedRemainingSeconds === 0 ? "border-coral bg-coral text-white" : "border-white/20"
               }`}
             >
@@ -190,7 +190,7 @@ export function PublicSlideshow({
             >
               ←
             </button>
-            <span className="min-w-16 text-center text-sm font-bold">
+            <span className="min-w-12 text-center text-sm font-bold sm:min-w-16">
               {active + 1} / {slides.length}
             </span>
             <button
@@ -203,7 +203,7 @@ export function PublicSlideshow({
               →
             </button>
             <button
-              className="h-10 rounded-md bg-white px-3 text-sm font-bold text-ink"
+              className="col-span-4 h-10 rounded-md bg-white px-3 text-sm font-bold text-ink sm:col-span-1"
               onClick={toggleFullscreen}
               type="button"
             >
