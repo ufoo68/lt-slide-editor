@@ -215,7 +215,7 @@ function DashboardContent() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-2xl font-black sm:text-3xl">{t.decksTitle}</h1>
@@ -269,7 +269,7 @@ function DashboardContent() {
         </div>
         <Tabs
           aria-label={t.decksTitle}
-          className="mb-5 overflow-x-auto"
+          className="mb-5 overflow-x-auto lg:hidden"
           selectedKey={activeTab}
           onSelectionChange={(key) => changeTab(key as DashboardTab)}
         >
@@ -285,6 +285,46 @@ function DashboardContent() {
             </Tabs.Tab>
           </Tabs.List>
         </Tabs>
+        <div className="grid gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start">
+          <aside className="hidden rounded-lg border border-line bg-white/90 p-3 shadow-panel lg:block">
+            <div className="mb-3">
+              <p className="text-xs font-black uppercase tracking-normal text-stone-500">Dashboard</p>
+              <p className="mt-1 text-sm font-semibold text-stone-700">
+                {activeTab === "decks" ? t.deckTab : activeTab === "shared" ? t.sharedSlidesTab : t.mediaTab}:{" "}
+                {activeTab === "decks" ? decks.length : activeTab === "shared" ? sharedSlides.length : media.length}
+              </p>
+            </div>
+            <nav className="grid gap-1" aria-label={t.decksTitle}>
+              <button
+                className={`flex h-10 items-center rounded-md px-3 text-left text-sm font-semibold ${
+                  activeTab === "decks" ? "bg-ink text-white" : "text-stone-700 hover:bg-stone-100"
+                }`}
+                onClick={() => changeTab("decks")}
+                type="button"
+              >
+                {t.deckTab}
+              </button>
+              <button
+                className={`flex h-10 items-center rounded-md px-3 text-left text-sm font-semibold ${
+                  activeTab === "shared" ? "bg-ink text-white" : "text-stone-700 hover:bg-stone-100"
+                }`}
+                onClick={() => changeTab("shared")}
+                type="button"
+              >
+                {t.sharedSlidesTab}
+              </button>
+              <button
+                className={`flex h-10 items-center rounded-md px-3 text-left text-sm font-semibold ${
+                  activeTab === "media" ? "bg-ink text-white" : "text-stone-700 hover:bg-stone-100"
+                }`}
+                onClick={() => changeTab("media")}
+                type="button"
+              >
+                {t.mediaTab}
+              </button>
+            </nav>
+          </aside>
+          <div className="min-w-0">
         {error ? <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         {listLoading ? <LoadingBlock label={t.loading} /> : null}
         {!listLoading && activeTab === "decks" && decks.length ? (
@@ -449,6 +489,8 @@ function DashboardContent() {
             </Card.Content>
           </Card>
         ) : null}
+          </div>
+        </div>
       </main>
     </>
   );
