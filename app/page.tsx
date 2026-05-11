@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Chip } from "@heroui/react";
+import { Button, Chip } from "ufoo-ui";
 import { Header } from "@/components/Header";
 import { LoginPanel } from "@/components/LoginPanel";
 import { Logo } from "@/components/Logo";

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Button, Card, Chip, Tabs, Tooltip } from "@heroui/react";
+import { Button, Card, Chip, Tabs, Tooltip } from "ufoo-ui";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { useAuth } from "@/components/AuthProvider";
@@ -274,13 +274,13 @@ function DashboardContent() {
           onSelectionChange={(key) => changeTab(key as DashboardTab)}
         >
           <Tabs.List className="min-w-max rounded-md border border-line bg-white p-1">
-            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="decks">
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="decks">
               {t.deckTab}
             </Tabs.Tab>
-            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="shared">
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="shared">
               {t.sharedSlidesTab}
             </Tabs.Tab>
-            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="media">
+            <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="media">
               {t.mediaTab}
             </Tabs.Tab>
           </Tabs.List>
@@ -338,19 +338,21 @@ function DashboardContent() {
           </Card>
         ) : null}
         {!listLoading && activeTab === "media" && media.length ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
             {media.map((item) => (
-              <Card className="border border-line bg-white/90 shadow-panel" key={item.id}>
-                <Card.Content>
-                {item.contentType.startsWith("video/") ? (
-                  <video className="aspect-video w-full rounded-lg bg-black object-contain" controls preload="metadata" src={item.url} title={item.filename} />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img alt={item.filename} className="aspect-video w-full rounded-lg bg-paper object-contain" src={item.url} />
-                )}
-                <h2 className="mt-3 truncate text-base font-black">{item.filename}</h2>
-                <p className="mt-1 text-sm text-stone-600">{Math.ceil(item.size / 1024)} KB</p>
-                <div className="mt-3 flex items-center rounded-lg bg-stone-100">
+              <Card className="h-full min-w-0 border border-line bg-white/90 shadow-panel" key={item.id}>
+                <Card.Content className="h-full min-w-0 content-start gap-2 p-3">
+                <div className="aspect-video min-w-0 overflow-hidden rounded-lg border border-line bg-paper">
+                  {item.contentType.startsWith("video/") ? (
+                    <video className="block size-full max-h-full max-w-full bg-black object-contain" controls preload="metadata" src={item.url} title={item.filename} />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img alt={item.filename} className="block size-full max-h-full max-w-full object-contain" src={item.url} />
+                  )}
+                </div>
+                <h2 className="truncate text-sm font-black">{item.filename}</h2>
+                <p className="text-xs text-stone-600">{Math.ceil(item.size / 1024)} KB</p>
+                <div className="flex min-w-0 items-center rounded-lg bg-stone-100">
                   <code className="min-w-0 flex-1 truncate bg-transparent p-2 text-xs">{item.markdown}</code>
                   <Tooltip>
                   <Button
@@ -376,7 +378,7 @@ function DashboardContent() {
                   </Tooltip>
                 </div>
                 <Button
-                  className="mt-3 w-full sm:w-fit"
+                  className="w-full sm:w-fit"
                   isDisabled={busy}
                   size="sm"
                   variant="outline"

@@ -132,22 +132,22 @@ export function slideThemeClasses(theme: SlideTheme) {
   switch (theme) {
     case "dark":
       return {
-        chrome: "bg-[#101418] text-white",
-        meta: "text-white/55",
-        slide: "bg-[#111827] text-white",
+        chrome: "bg-ufoo-workspace text-ufoo-ink",
+        meta: "text-ufoo-muted",
+        slide: "bg-ufoo-dark text-ufoo-ink",
       };
     case "mint":
       return {
-        chrome: "bg-mint text-white",
-        meta: "text-white/75",
-        slide: "bg-[#fbfff9] text-ink",
+        chrome: "bg-ufoo-neon text-ufoo-dark",
+        meta: "text-ufoo-dark",
+        slide: "bg-ufoo-canvas text-ufoo-dark",
       };
     case "default":
     default:
       return {
-        chrome: "bg-ink text-white",
-        meta: "text-white/55",
-        slide: "bg-white text-ink",
+        chrome: "bg-ufoo-dark text-ufoo-ink",
+        meta: "text-ufoo-muted",
+        slide: "bg-ufoo-panel text-ufoo-ink",
       };
   }
 }

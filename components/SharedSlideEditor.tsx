@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Button, Tabs } from "@heroui/react";
+import { Button, Tabs } from "ufoo-ui";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { SlidePreview } from "@/components/SlidePreview";
@@ -300,10 +300,10 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             onSelectionChange={(key) => setMobilePanel(key === "preview" ? "preview" : "markdown")}
           >
             <Tabs.List className="grid grid-cols-2 rounded-md border border-line bg-white p-1">
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="markdown">
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="markdown">
                 {t.fullMarkdown}
               </Tabs.Tab>
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="preview">
+              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="preview">
                 {t.preview}
               </Tabs.Tab>
             </Tabs.List>

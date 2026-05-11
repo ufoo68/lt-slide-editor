@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut } from "firebase/auth";
-import { Button } from "@heroui/react";
+import { Button } from "ufoo-ui";
 import { getClientAuth } from "@/lib/firebase-client";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/Logo";

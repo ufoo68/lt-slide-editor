@@ -2,7 +2,7 @@
 
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
-import { Button, Card, Input, Tabs } from "@heroui/react";
+import { Button, Card, Input, Tabs } from "ufoo-ui";
 import { useAuth } from "@/components/AuthProvider";
 import { getClientAuth, getGoogleProvider } from "@/lib/firebase-client";
 import { useLanguage } from "@/lib/i18n";
@@ -67,10 +67,10 @@ export function LoginPanel() {
         onSelectionChange={(key) => setMode(key === "signup" ? "signup" : "signin")}
       >
         <Tabs.List className="rounded-md border border-line bg-white p-1">
-          <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="signin">
+          <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="signin">
             {t.signIn}
           </Tabs.Tab>
-          <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="signup">
+          <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="signup">
             {t.signUp}
           </Tabs.Tab>
         </Tabs.List>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Spinner } from "@heroui/react";
+import { Card, Spinner } from "ufoo-ui";
 import { useLanguage } from "@/lib/i18n";
 
 type LoadingBlockProps = {
