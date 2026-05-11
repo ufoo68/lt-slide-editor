@@ -512,13 +512,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               >
                 <span
                   className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-[left] ${
-                    visibility === "public" ? "left-4.5" : "left-0.5"
+                    visibility === "public" ? "left-[18px]" : "left-0.5"
                   }`}
                 />
               </Switch.Control>
               {t.public}
             </Switch>
-            <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 lg:hidden xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
+            <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
               <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
                 <rect height="18" rx="2" width="18" x="3" y="3" />
                 <circle cx="9" cy="9" r="2" />
@@ -526,7 +526,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               </svg>
               <span className="hidden xl:inline">{t.mediaTab}</span>
             </Button>
-            <Button aria-label={t.sharedSlidesTab} className="h-9 w-9 min-w-9 shrink-0 px-0 lg:hidden xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setLibraryOpen(true)}>
+            <Button aria-label={t.sharedSlidesTab} className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setLibraryOpen(true)}>
               <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
                 <rect height="14" rx="2" width="18" x="3" y="5" />
                 <path d="M7 9h10" />
@@ -665,69 +665,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           )}
         </section>
 
-        <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
-          <aside className="flex min-h-0 flex-col rounded-lg border border-line bg-white/90 p-3 shadow-panel">
-            <div className="mb-3">
-              <p className="text-xs font-black uppercase tracking-normal text-stone-500">Editor</p>
-              <p className="mt-1 text-sm font-semibold text-stone-700">{safeActiveSlideIndex + 1} / {slideCount}</p>
-            </div>
-            <nav className="grid gap-1" aria-label={t.pageEdit}>
-              <button
-                className={`flex h-10 items-center rounded-md px-3 text-left text-sm font-semibold ${
-                  editMode === "page" ? "bg-ink text-white" : "text-stone-700 hover:bg-stone-100"
-                }`}
-                onClick={() => setEditMode("page")}
-                type="button"
-              >
-                {t.pageEdit}
-              </button>
-              <button
-                className={`flex h-10 items-center rounded-md px-3 text-left text-sm font-semibold ${
-                  editMode === "theme" ? "bg-ink text-white" : "text-stone-700 hover:bg-stone-100"
-                }`}
-                onClick={() => setEditMode("theme")}
-                type="button"
-              >
-                {t.themeSettings}
-              </button>
-              <button
-                className={`flex h-10 items-center rounded-md px-3 text-left text-sm font-semibold ${
-                  editMode === "full" ? "bg-ink text-white" : "text-stone-700 hover:bg-stone-100"
-                }`}
-                onClick={() => setEditMode("full")}
-                type="button"
-              >
-                {t.fullMarkdown}
-              </button>
-            </nav>
-            <div className="my-4 h-px bg-line" />
-            <div className="grid gap-2">
-              <Button className="justify-start" size="sm" variant="outline" onPress={() => setMediaOpen(true)}>
-                <svg aria-hidden="true" className="mr-2 h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                  <rect height="18" rx="2" width="18" x="3" y="3" />
-                  <circle cx="9" cy="9" r="2" />
-                  <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
-                </svg>
-                {t.mediaTab}
-              </Button>
-              <Button className="justify-start" size="sm" variant="outline" onPress={() => setLibraryOpen(true)}>
-                <svg aria-hidden="true" className="mr-2 h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                  <rect height="14" rx="2" width="18" x="3" y="5" />
-                  <path d="M7 9h10" />
-                  <path d="M7 13h6" />
-                </svg>
-                {t.sharedSlidesTab}
-              </Button>
-              <Button className="justify-start" size="sm" variant="outline" onPress={() => setPresentationPreviewOpen(true)}>
-                <svg aria-hidden="true" className="mr-2 h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                  <rect height="14" rx="2" width="20" x="2" y="3" />
-                  <path d="M8 21h8" />
-                  <path d="M12 17v4" />
-                </svg>
-                {t.presentationView}
-              </Button>
-            </div>
-          </aside>
+        <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
           <div className="flex min-h-0 flex-col gap-3 lg:h-full">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
@@ -735,6 +673,29 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} ${language === "ja" ? "slides" : "slides"}`}
               </span>
             </div>
+            <Tabs
+              aria-label={t.pageEdit}
+              selectedKey={editMode}
+              onSelectionChange={(key) => {
+                if (key === "theme" || key === "full") {
+                  setEditMode(key);
+                  return;
+                }
+                setEditMode("page");
+              }}
+            >
+              <Tabs.List className="rounded-md border border-line bg-white p-1">
+                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="page">
+                  {t.pageEdit}
+                </Tabs.Tab>
+                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="theme">
+                  {t.themeSettings}
+                </Tabs.Tab>
+                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="full">
+                  {t.fullMarkdown}
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs>
             {editMode === "page" ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -764,7 +725,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             ) : null}
             {editMode === "page" ? (
               <textarea
-                className="min-h-72 resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-96 lg:min-h-0 lg:flex-1"
+                className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
                 onChange={(event) => updateActiveSlide(event.target.value)}
                 spellCheck={false}
@@ -808,7 +769,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               </div>
             ) : (
               <textarea
-                className="min-h-72 resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-96 lg:min-h-0 lg:flex-1"
+                className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
                 onChange={(event) => setMarkdown(event.target.value)}
                 spellCheck={false}
@@ -956,7 +917,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 {t.close}
               </button>
             </div>
-            <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-disabled:cursor-not-allowed has-disabled:opacity-50">
+            <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
               {t.uploadMedia}
               <input
                 accept="image/*,video/*"
