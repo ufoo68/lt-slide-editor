@@ -52,6 +52,14 @@ body {
   margin: 1rem 0;
 }
 
+.slide-content ul {
+  list-style: disc;
+}
+
+.slide-content ol {
+  list-style: decimal;
+}
+
 .slide-content pre {
   border-radius: 8px;
   overflow: auto;
