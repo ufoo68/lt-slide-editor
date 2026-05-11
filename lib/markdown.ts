@@ -15,6 +15,28 @@ export type SlideStats = {
   maxCodeLines: number;
 };
 
+export const slideThemes = ["default", "dark", "mint"] as const;
+
+export type SlideTheme = (typeof slideThemes)[number];
+
+export type SlideDeckSettings = {
+  footer: string;
+  header: string;
+  theme: SlideTheme;
+};
+
+export type ParsedDeckMarkdown = {
+  body: string;
+  frontMatter: string | null;
+  settings: SlideDeckSettings;
+};
+
+export const defaultSlideDeckSettings: SlideDeckSettings = {
+  footer: "",
+  header: "",
+  theme: "default",
+};
+
 const md = new MarkdownIt({
   html: true,
   linkify: true,
@@ -29,6 +51,106 @@ const md = new MarkdownIt({
     return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
   },
 });
+
+function parseSlideTheme(value: string): SlideTheme {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "dark" || normalized === "mint") {
+    return normalized;
+  }
+  return "default";
+}
+
+function unquoteFrontMatterValue(value: string) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+export function parseDeckMarkdown(markdown: string): ParsedDeckMarkdown {
+  const match = markdown.match(/^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) {
+    return {
+      body: markdown,
+      frontMatter: null,
+      settings: defaultSlideDeckSettings,
+    };
+  }
+
+  const settings = { ...defaultSlideDeckSettings };
+  const frontMatterBody = match[1];
+  for (const line of frontMatterBody.split(/\r?\n/)) {
+    const lineMatch = line.match(/^\s*([A-Za-z][\w-]*)\s*:\s*(.*?)\s*$/);
+    if (!lineMatch) {
+      continue;
+    }
+
+    const key = lineMatch[1].toLowerCase();
+    const value = unquoteFrontMatterValue(lineMatch[2]);
+    if (key === "theme") {
+      settings.theme = parseSlideTheme(value);
+    }
+    if (key === "header") {
+      settings.header = value;
+    }
+    if (key === "footer" || key === "hooter") {
+      settings.footer = value;
+    }
+  }
+
+  return {
+    body: markdown.slice(match[0].length),
+    frontMatter: match[0].trimEnd(),
+    settings,
+  };
+}
+
+function quoteFrontMatterValue(value: string) {
+  return JSON.stringify(value);
+}
+
+export function buildDeckFrontMatter(settings: SlideDeckSettings) {
+  return [
+    "---",
+    `theme: ${settings.theme}`,
+    `header: ${quoteFrontMatterValue(settings.header)}`,
+    `footer: ${quoteFrontMatterValue(settings.footer)}`,
+    "---",
+  ].join("\n");
+}
+
+export function updateDeckSettings(markdown: string, settings: SlideDeckSettings) {
+  const parsed = parseDeckMarkdown(markdown);
+  return `${buildDeckFrontMatter(settings)}\n${parsed.body.replace(/^\s+/, "")}`;
+}
+
+export function slideThemeClasses(theme: SlideTheme) {
+  switch (theme) {
+    case "dark":
+      return {
+        chrome: "bg-[#101418] text-white",
+        meta: "text-white/55",
+        slide: "bg-[#111827] text-white",
+      };
+    case "mint":
+      return {
+        chrome: "bg-mint text-white",
+        meta: "text-white/75",
+        slide: "bg-[#fbfff9] text-ink",
+      };
+    case "default":
+    default:
+      return {
+        chrome: "bg-ink text-white",
+        meta: "text-white/55",
+        slide: "bg-white text-ink",
+      };
+  }
+}
 
 function parseMediaLayout(title: string | null) {
   const match = title?.match(/\blt-media:([^\s"]+)/);
@@ -191,19 +313,20 @@ function sanitizeOptions(): sanitizeHtml.IOptions {
 }
 
 export function splitSlides(markdown: string) {
-  return markdown
+  return parseDeckMarkdown(markdown).body
     .split(/\n---\s*(?:\n|$)/g)
     .map((slide) => slide.trim())
     .filter(Boolean);
 }
 
 export function splitEditableSlides(markdown: string) {
-  const slides = markdown.split(/\n---\s*(?:\n|$)/g);
+  const slides = parseDeckMarkdown(markdown).body.split(/\n---\s*(?:\n|$)/g);
   return slides.length ? slides : [""];
 }
 
-export function joinEditableSlides(slides: string[]) {
-  return slides.join("\n---\n");
+export function joinEditableSlides(slides: string[], frontMatter?: string | null) {
+  const body = slides.join("\n---\n");
+  return frontMatter ? `${frontMatter}\n${body}` : body;
 }
 
 export function renderMarkdown(markdown: string) {

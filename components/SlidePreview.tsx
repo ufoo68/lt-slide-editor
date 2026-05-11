@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import { renderSlides } from "@/lib/markdown";
+import { parseDeckMarkdown, renderSlides, slideThemeClasses } from "@/lib/markdown";
 import { SlideContent } from "@/components/SlideContent";
 import { useLanguage } from "@/lib/i18n";
 
@@ -143,6 +143,8 @@ function updateMarkdownMediaLayout(markdown: string, targetIndex: number, layout
 export function SlidePreview({ activeIndex, compact = false, editableMedia = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
   const { t } = useLanguage();
   const slides = useMemo(() => renderSlides(markdown), [markdown]);
+  const settings = useMemo(() => parseDeckMarkdown(markdown).settings, [markdown]);
+  const themeClasses = slideThemeClasses(settings.theme);
   const [internalActive, setInternalActive] = useState(0);
   const dragRef = useRef<MediaDragState | null>(null);
   const hoverMediaRef = useRef<HTMLElement | null>(null);
@@ -298,7 +300,7 @@ export function SlidePreview({ activeIndex, compact = false, editableMedia = fal
   return (
     <div className={compact ? "grid gap-1.5" : "grid gap-3"}>
       <div
-        className={compact ? "aspect-video max-h-[48dvh] w-full overflow-hidden rounded-lg border border-line bg-white shadow-panel" : "aspect-video overflow-hidden rounded-lg border border-line bg-white shadow-panel"}
+        className={`${compact ? "aspect-video max-h-[48dvh] w-full" : "aspect-video"} overflow-hidden rounded-lg border border-line shadow-panel ${themeClasses.slide}`}
         onPointerCancel={finishMediaDrag}
         onPointerDown={startMediaDrag}
         onPointerLeave={clearMediaHover}
@@ -308,11 +310,23 @@ export function SlidePreview({ activeIndex, compact = false, editableMedia = fal
         }}
         onPointerUp={finishMediaDrag}
       >
-        <SlideContent
-          className={`slide-content flex h-full flex-col justify-center ${compact ? "p-3 sm:p-4" : "p-4 sm:p-6 lg:p-8"} ${editableMedia ? "slide-content-editable" : ""}`}
-          html={current.html}
-          key={`${current.index}-${current.html}`}
-        />
+        <div className="relative h-full">
+          {settings.header ? (
+            <div className="pointer-events-none absolute left-4 right-4 top-3 z-10 truncate text-xs font-semibold opacity-60 sm:left-6 sm:right-6">
+              {settings.header}
+            </div>
+          ) : null}
+          <SlideContent
+            className={`slide-content flex h-full flex-col justify-center ${compact ? "p-3 pt-7 pb-7 sm:p-4 sm:pt-8 sm:pb-8" : "p-4 pt-9 pb-9 sm:p-6 sm:pt-10 sm:pb-10 lg:p-8 lg:pt-12 lg:pb-12"} ${editableMedia ? "slide-content-editable" : ""}`}
+            html={current.html}
+            key={`${current.index}-${current.html}`}
+          />
+          {settings.footer ? (
+            <div className="pointer-events-none absolute bottom-3 left-4 right-4 z-10 truncate text-xs font-semibold opacity-60 sm:left-6 sm:right-6">
+              {settings.footer}
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
         <button

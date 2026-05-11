@@ -9,7 +9,7 @@ import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SlidePreview } from "@/components/SlidePreview";
-import { joinEditableSlides, renderSlides, splitEditableSlides } from "@/lib/markdown";
+import { joinEditableSlides, parseDeckMarkdown, renderSlides, slideThemes, splitEditableSlides, updateDeckSettings, type SlideDeckSettings, type SlideTheme } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
 import { useLanguage } from "@/lib/i18n";
 
@@ -62,7 +62,13 @@ type AiReview = {
   suggestions: AiReviewSuggestion[];
 };
 
-const initialMarkdown = `# 今日話すこと
+const initialMarkdown = `---
+theme: default
+header: ""
+footer: ""
+---
+
+# 今日話すこと
 
 - 背景
 - 課題
@@ -109,7 +115,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [markdown, setMarkdown] = useState(mode === "new" ? initialMarkdown : "");
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [editMode, setEditMode] = useState<"page" | "full">("page");
+  const [editMode, setEditMode] = useState<"page" | "theme" | "full">("page");
   const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview" | "review">("markdown");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
@@ -132,6 +138,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [aiReview, setAiReview] = useState<AiReview | null>(null);
   const [aiReviewError, setAiReviewError] = useState<string | null>(null);
   const [aiReviewLoading, setAiReviewLoading] = useState(false);
+  const parsedMarkdown = useMemo(() => parseDeckMarkdown(markdown), [markdown]);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
     () => renderSlides(markdown).map((slide) => ({ index: slide.index, html: slide.html })),
@@ -254,7 +261,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     const nextSlides = [...slides];
     const insertIndex = safeActiveSlideIndex + 1;
     nextSlides.splice(insertIndex, 0, slide.markdown.trim());
-    setMarkdown(joinEditableSlides(nextSlides));
+    setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
     setActiveSlideIndex(insertIndex);
     setLibraryOpen(false);
     setStatus(t.insertedLibrarySlide(slide.title));
@@ -340,7 +347,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   function updateActiveSlide(nextMarkdown: string) {
     const nextSlides = [...slides];
     nextSlides[safeActiveSlideIndex] = nextMarkdown;
-    setMarkdown(joinEditableSlides(nextSlides));
+    setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
   }
 
   function goPreviousSlide() {
@@ -354,7 +361,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     }
 
     const nextSlides = [...slides, ""];
-    setMarkdown(joinEditableSlides(nextSlides));
+    setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
     setActiveSlideIndex(nextSlides.length - 1);
   }
 
@@ -366,8 +373,19 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     }
 
     const nextSlides = slides.filter((_, index) => index !== safeActiveSlideIndex);
-    setMarkdown(joinEditableSlides(nextSlides));
+    setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
     setActiveSlideIndex((index) => Math.min(index, nextSlides.length - 1));
+  }
+
+  function updateSlideSettings(nextSettings: SlideDeckSettings) {
+    setMarkdown((currentMarkdown) => updateDeckSettings(currentMarkdown, nextSettings));
+  }
+
+  function updateSlideSetting<Key extends keyof SlideDeckSettings>(key: Key, value: SlideDeckSettings[Key]) {
+    updateSlideSettings({
+      ...parsedMarkdown.settings,
+      [key]: value,
+    });
   }
 
   async function save() {
@@ -379,7 +397,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       while (normalizedSlides.length > 1 && !normalizedSlides.at(-1)?.trim()) {
         normalizedSlides.pop();
       }
-      const normalizedMarkdown = joinEditableSlides(normalizedSlides);
+      const normalizedMarkdown = joinEditableSlides(normalizedSlides, parsedMarkdown.frontMatter);
       const removedEmptySlideCount = slides.length - normalizedSlides.length;
       const nextActiveSlideIndex = Math.min(safeActiveSlideIndex, Math.max(normalizedSlides.length - 1, 0));
       const idToken = await token();
@@ -658,11 +676,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <Tabs
               aria-label={t.pageEdit}
               selectedKey={editMode}
-              onSelectionChange={(key) => setEditMode(key === "full" ? "full" : "page")}
+              onSelectionChange={(key) => {
+                if (key === "theme" || key === "full") {
+                  setEditMode(key);
+                  return;
+                }
+                setEditMode("page");
+              }}
             >
               <Tabs.List className="rounded-md border border-line bg-white p-1">
                 <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="page">
                   {t.pageEdit}
+                </Tabs.Tab>
+                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="theme">
+                  {t.themeSettings}
                 </Tabs.Tab>
                 <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold data-[selected=true]:bg-ink data-[selected=true]:text-white" id="full">
                   {t.fullMarkdown}
@@ -704,6 +731,42 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 spellCheck={false}
                 value={activeSlideMarkdown}
               />
+            ) : editMode === "theme" ? (
+              <div className="grid content-start gap-4 rounded-lg border border-line bg-white/90 p-4 shadow-panel">
+                <label className="grid gap-1 text-sm font-semibold">
+                  {t.slideTheme}
+                  <select
+                    className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold outline-mint"
+                    onChange={(event) => updateSlideSetting("theme", event.target.value as SlideTheme)}
+                    value={parsedMarkdown.settings.theme}
+                  >
+                    {slideThemes.map((theme) => (
+                      <option key={theme} value={theme}>
+                        {theme === "dark" ? t.slideThemeDark : theme === "mint" ? t.slideThemeMint : t.slideThemeDefault}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-semibold">
+                  {t.slideHeader}
+                  <Input
+                    onChange={(event) => updateSlideSetting("header", event.target.value)}
+                    value={parsedMarkdown.settings.header}
+                    variant="primary"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm font-semibold">
+                  {t.slideFooter}
+                  <Input
+                    onChange={(event) => updateSlideSetting("footer", event.target.value)}
+                    value={parsedMarkdown.settings.footer}
+                    variant="primary"
+                  />
+                </label>
+                <div className="rounded-md bg-stone-100 p-3 text-xs leading-5 text-stone-600">
+                  <code>{`---\ntheme: ${parsedMarkdown.settings.theme}\nheader: ${JSON.stringify(parsedMarkdown.settings.header)}\nfooter: ${JSON.stringify(parsedMarkdown.settings.footer)}\n---`}</code>
+                </div>
+              </div>
             ) : (
               <textarea
                 className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
@@ -913,6 +976,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             initialActive={safeActiveSlideIndex}
             onClose={() => setPresentationPreviewOpen(false)}
             presentationMinutes={presentationMinutes}
+            settings={parsedMarkdown.settings}
             slides={presentationSlides}
             title={title || t.untitled}
             updatedAt={deck ? new Date(deck.updatedAt).toLocaleDateString(language === "ja" ? "ja-JP" : "en-US") : t.editing}

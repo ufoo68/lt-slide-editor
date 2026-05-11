@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SlideContent } from "@/components/SlideContent";
 import { useLanguage } from "@/lib/i18n";
+import { defaultSlideDeckSettings, slideThemeClasses, type SlideDeckSettings } from "@/lib/markdown";
 
 type PublicSlide = {
   index: number;
@@ -13,6 +14,7 @@ type PublicSlideshowProps = {
   initialActive?: number;
   onClose?: () => void;
   presentationMinutes?: number;
+  settings?: SlideDeckSettings;
   title: string;
   updatedAt: string;
   slides: PublicSlide[];
@@ -32,6 +34,7 @@ export function PublicSlideshow({
   initialActive = 0,
   onClose,
   presentationMinutes = 5,
+  settings = defaultSlideDeckSettings,
   title,
   updatedAt,
   slides,
@@ -43,6 +46,7 @@ export function PublicSlideshow({
   const [remainingSeconds, setRemainingSeconds] = useState(totalSeconds);
   const [timerEndsAt, setTimerEndsAt] = useState<number | null>(null);
   const current = slides[Math.min(active, Math.max(slides.length - 1, 0))];
+  const themeClasses = slideThemeClasses(settings.theme);
   const timerRunning = timerEndsAt !== null;
   const displayedRemainingSeconds = timerRunning || remainingSeconds === 0 ? remainingSeconds : totalSeconds;
   const progress = useMemo(() => {
@@ -154,12 +158,12 @@ export function PublicSlideshow({
   }
 
   return (
-    <main className="min-h-screen bg-ink text-white">
+    <main className={`min-h-screen ${themeClasses.chrome}`}>
       <div className="flex min-h-screen flex-col">
         <header className="flex min-h-16 flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0 self-stretch sm:self-auto">
             <h1 className="truncate text-lg font-black">{title}</h1>
-            <p className="text-xs font-semibold text-white/55">{t.updatedLabel} {updatedAt}</p>
+            <p className={`text-xs font-semibold ${themeClasses.meta}`}>{t.updatedLabel} {updatedAt}</p>
           </div>
           <div className="grid grid-cols-4 items-center gap-2 sm:flex">
             <div
@@ -218,12 +222,24 @@ export function PublicSlideshow({
 
         <section className="flex flex-1 items-center justify-center px-4 py-5 sm:px-6 lg:px-10">
           <div className="w-full max-w-7xl">
-            <div className="aspect-video overflow-hidden rounded-lg bg-white text-ink shadow-panel">
-              <SlideContent
-                className="slide-content flex h-full flex-col justify-center p-6 sm:p-10 lg:p-14"
-                html={current.html}
-                key={`${current.index}-${current.html}`}
-              />
+            <div className={`aspect-video overflow-hidden rounded-lg shadow-panel ${themeClasses.slide}`}>
+              <div className="relative h-full">
+                {settings.header ? (
+                  <div className="pointer-events-none absolute left-6 right-6 top-4 z-10 truncate text-sm font-semibold opacity-60 sm:left-10 sm:right-10 lg:left-14 lg:right-14">
+                    {settings.header}
+                  </div>
+                ) : null}
+                <SlideContent
+                  className="slide-content flex h-full flex-col justify-center p-6 pt-12 pb-12 sm:p-10 sm:pt-14 sm:pb-14 lg:p-14 lg:pt-16 lg:pb-16"
+                  html={current.html}
+                  key={`${current.index}-${current.html}`}
+                />
+                {settings.footer ? (
+                  <div className="pointer-events-none absolute bottom-4 left-6 right-6 z-10 truncate text-sm font-semibold opacity-60 sm:left-10 sm:right-10 lg:left-14 lg:right-14">
+                    {settings.footer}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </section>
