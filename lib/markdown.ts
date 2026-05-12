@@ -15,7 +15,7 @@ export type SlideStats = {
   maxCodeLines: number;
 };
 
-export const slideThemes = ["default", "dark", "mint"] as const;
+export const slideThemes = ["light", "dark", "mint"] as const;
 
 export type SlideTheme = (typeof slideThemes)[number];
 
@@ -34,7 +34,7 @@ export type ParsedDeckMarkdown = {
 export const defaultSlideDeckSettings: SlideDeckSettings = {
   footer: "",
   header: "",
-  theme: "default",
+  theme: "light",
 };
 
 const md = new MarkdownIt({
@@ -54,10 +54,10 @@ const md = new MarkdownIt({
 
 function parseSlideTheme(value: string): SlideTheme {
   const normalized = value.trim().toLowerCase();
-  if (normalized === "dark" || normalized === "mint") {
+  if (normalized === "dark" || normalized === "light" || normalized === "mint") {
     return normalized;
   }
-  return "default";
+  return "light";
 }
 
 function unquoteFrontMatterValue(value: string) {
@@ -134,20 +134,25 @@ export function slideThemeClasses(theme: SlideTheme) {
       return {
         chrome: "bg-ufoo-workspace text-ufoo-ink",
         meta: "text-ufoo-muted",
-        slide: "bg-ufoo-dark text-ufoo-ink",
+        slide: "slide-theme-dark bg-ufoo-dark text-ufoo-ink",
+      };
+    case "light":
+      return {
+        chrome: "bg-slate-100 text-slate-900",
+        meta: "text-slate-500",
+        slide: "bg-[#ffffff] text-slate-950",
       };
     case "mint":
       return {
-        chrome: "bg-ufoo-neon text-ufoo-dark",
-        meta: "text-ufoo-dark",
-        slide: "bg-ufoo-canvas text-ufoo-dark",
+        chrome: "bg-emerald-100 text-emerald-950",
+        meta: "text-emerald-700",
+        slide: "bg-[#ecfdf5] text-emerald-950",
       };
-    case "default":
     default:
       return {
-        chrome: "bg-ufoo-dark text-ufoo-ink",
-        meta: "text-ufoo-muted",
-        slide: "bg-ufoo-panel text-ufoo-ink",
+        chrome: "bg-slate-100 text-slate-900",
+        meta: "text-slate-500",
+        slide: "bg-[#ffffff] text-slate-950",
       };
   }
 }

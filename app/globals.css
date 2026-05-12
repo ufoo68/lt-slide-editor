@@ -142,6 +142,19 @@ body {
   max-width: 100%;
 }
 
+.slide-theme-dark .slide-content .mermaid svg [stroke],
+.slide-theme-dark .slide-content .mermaid svg .edgePath .path,
+.slide-theme-dark .slide-content .mermaid svg .edgePaths path,
+.slide-theme-dark .slide-content .mermaid svg .flowchart-link,
+.slide-theme-dark .slide-content .mermaid svg path.flowchart-link,
+.slide-theme-dark .slide-content .mermaid svg marker path {
+  stroke: #f6f7fb !important;
+}
+
+.slide-theme-dark .slide-content .mermaid svg marker path {
+  fill: #f6f7fb !important;
+}
+
 .slide-content code:not(pre code) {
   background: #1a1a1c;
   border-radius: 4px;

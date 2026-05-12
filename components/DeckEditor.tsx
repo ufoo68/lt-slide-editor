@@ -63,7 +63,7 @@ type AiReview = {
 };
 
 const initialMarkdown = `---
-theme: default
+theme: light
 header: ""
 footer: ""
 ---
@@ -742,7 +742,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   >
                     {slideThemes.map((theme) => (
                       <option key={theme} value={theme}>
-                        {theme === "dark" ? t.slideThemeDark : theme === "mint" ? t.slideThemeMint : t.slideThemeDefault}
+                        {theme === "dark"
+                          ? t.slideThemeDark
+                          : theme === "light"
+                            ? t.slideThemeLight
+                            : t.slideThemeMint}
                       </option>
                     ))}
                   </select>

@@ -393,18 +393,18 @@ function DashboardContent() {
         ) : null}
         {!listLoading && activeTab === "media" && !media.length ? (
           <Card className="border border-dashed border-line bg-white/80">
-            <Card.Content className="items-center p-6 text-center sm:p-10">
-            <p className="mb-4 font-semibold text-stone-700">{t.noMedia}</p>
-            <label className="inline-flex cursor-pointer rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
-              {t.uploadMedia}
-              <input
-                accept="image/*,video/*"
-                className="sr-only"
-                disabled={busy}
-                onChange={(event) => uploadMedia(event.target.files?.[0] ?? null)}
-                type="file"
-              />
-            </label>
+            <Card.Content className="flex flex-col items-center justify-center p-6 text-center sm:p-10">
+              <p className="mb-4 font-semibold text-stone-700">{t.noMedia}</p>
+              <label className="cursor-pointer justify-center rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                {t.uploadMedia}
+                <input
+                  accept="image/*,video/*"
+                  className="sr-only"
+                  disabled={busy}
+                  onChange={(event) => uploadMedia(event.target.files?.[0] ?? null)}
+                  type="file"
+                />
+              </label>
             </Card.Content>
           </Card>
         ) : null}
