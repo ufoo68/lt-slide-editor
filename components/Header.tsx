@@ -14,7 +14,7 @@ export function Header() {
 
   return (
     <header className="border-b border-line/70 bg-background/85 backdrop-blur">
-      <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:flex-nowrap sm:py-0">
+      <div className="flex min-h-16 w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:flex-nowrap sm:py-0">
         <Logo />
         {user ? (
           <nav className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">

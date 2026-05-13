@@ -215,7 +215,7 @@ function DashboardContent() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <main className="w-full px-4 py-6 sm:py-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-2xl font-black sm:text-3xl">{t.decksTitle}</h1>
@@ -338,7 +338,7 @@ function DashboardContent() {
           </Card>
         ) : null}
         {!listLoading && activeTab === "media" && media.length ? (
-          <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6">
             {media.map((item) => (
               <Card className="h-full min-w-0 border border-line bg-white/90 shadow-panel" key={item.id}>
                 <Card.Content className="h-full min-w-0 content-start gap-2 p-3">

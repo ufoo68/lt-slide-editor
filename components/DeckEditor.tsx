@@ -487,7 +487,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     return (
       <>
         <Header />
-        <main className="mx-auto max-w-4xl px-4 py-8">
+        <main className="w-full px-4 py-8">
           <LoadingBlock label={deckLoading ? t.deckLoading : t.authChecking} />
         </main>
       </>
@@ -497,7 +497,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   return (
     <>
       <Header />
-      <main className="mx-auto flex min-h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
+      <main className="flex min-h-[calc(100dvh-4rem-1px)] w-full flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
         <DeckEditorToolbar
           busy={busy}
           hasUnsavedChanges={hasUnsavedChanges}

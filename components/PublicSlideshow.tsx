@@ -221,7 +221,7 @@ export function PublicSlideshow({
         </div>
 
         <section className="flex flex-1 items-center justify-center px-4 py-5 sm:px-6 lg:px-10">
-          <div className="w-full max-w-7xl">
+          <div className="w-full">
             <div className={`aspect-video overflow-hidden rounded-lg shadow-panel ${themeClasses.slide}`}>
               <div className="relative h-full">
                 {settings.header ? (
