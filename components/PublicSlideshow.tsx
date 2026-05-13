@@ -158,9 +158,9 @@ export function PublicSlideshow({
   }
 
   return (
-    <main className={`min-h-screen ${themeClasses.chrome}`}>
-      <div className="flex min-h-screen flex-col">
-        <header className="flex min-h-16 flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+    <main className={`h-screen overflow-hidden ${themeClasses.chrome}`}>
+      <div className="flex h-full min-h-0 flex-col">
+        <header className="shrink-0 flex min-h-16 flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0 self-stretch sm:self-auto">
             <h1 className="truncate text-lg font-black">{title}</h1>
             <p className={`text-xs font-semibold ${themeClasses.meta}`}>{t.updatedLabel} {updatedAt}</p>
@@ -220,8 +220,8 @@ export function PublicSlideshow({
           <div className="h-full bg-coral transition-all" style={{ width: `${progress}%` }} />
         </div>
 
-        <section className="flex flex-1 items-center justify-center px-4 py-5 sm:px-6 lg:px-10">
-          <div className="w-full">
+        <section className="flex min-h-0 flex-1 items-center justify-center px-4 py-4 sm:px-6 lg:px-10">
+          <div className="w-full max-w-[calc((100dvh-11rem)*16/9)]">
             <div className={`aspect-video overflow-hidden rounded-lg shadow-panel ${themeClasses.slide}`}>
               <div className="relative h-full">
                 {settings.header ? (
@@ -244,7 +244,7 @@ export function PublicSlideshow({
           </div>
         </section>
 
-        <footer className="flex min-h-12 items-center justify-center px-4 pb-4 text-xs font-semibold text-white/45">
+        <footer className="flex min-h-10 shrink-0 items-center justify-center px-4 pb-3 text-xs font-semibold text-white/45">
           <span>← / → / Space / F</span>
         </footer>
       </div>
