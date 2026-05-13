@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, type Key, useEffect, useState } from "react";
 import { Button, Card, Chip, Tabs, Tooltip } from "ufoo-ui";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
@@ -53,7 +53,7 @@ function DashboardContent() {
   const { language, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = parseDashboardTab(searchParams.get("tab"));
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => parseDashboardTab(searchParams.get("tab")));
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [media, setMedia] = useState<MediaSummary[]>([]);
   const [sharedSlides, setSharedSlides] = useState<SharedSlideSummary[]>([]);
@@ -61,6 +61,15 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [listLoading, setListLoading] = useState(true);
+
+  useEffect(() => {
+    function syncTabFromUrl() {
+      setActiveTab(parseDashboardTab(new URLSearchParams(window.location.search).get("tab")));
+    }
+
+    window.addEventListener("popstate", syncTabFromUrl);
+    return () => window.removeEventListener("popstate", syncTabFromUrl);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -201,7 +210,10 @@ function DashboardContent() {
     }
   }
 
-  function changeTab(tab: DashboardTab) {
+  function changeTab(tabKey: Key) {
+    const tab = parseDashboardTab(String(tabKey));
+    setActiveTab(tab);
+
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set("tab", tab);
     const nextQuery = nextParams.toString();
@@ -271,7 +283,7 @@ function DashboardContent() {
           aria-label={t.decksTitle}
           className="mb-5 overflow-x-auto"
           selectedKey={activeTab}
-          onSelectionChange={(key) => changeTab(key as DashboardTab)}
+          onSelectionChange={changeTab}
         >
           <Tabs.List className="min-w-max rounded-md border border-line bg-white p-1">
             <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="decks">
