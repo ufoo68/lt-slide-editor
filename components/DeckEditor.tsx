@@ -276,12 +276,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     }
 
     const width = Math.min(360, Math.max(280, window.innerWidth - 24));
+    const height = 260;
     const maxLeft = Math.max(12, window.innerWidth - width - 12);
-    const maxTop = Math.max(12, window.innerHeight - 260);
+    const maxTop = Math.max(12, window.innerHeight - height - 12);
+    const preferredLeft = clientX + 18;
 
     return {
-      left: Math.min(Math.max(12, clientX - width / 2), maxLeft),
-      top: Math.min(Math.max(12, clientY + 14), maxTop),
+      left: Math.min(Math.max(12, preferredLeft), maxLeft),
+      top: Math.min(Math.max(12, clientY - height / 2), maxTop),
     };
   }
 
@@ -756,6 +758,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         position={factCheckPopupPosition}
         onBackgroundChange={setFactCheckBackground}
         onClose={() => setFactCheckPopupPosition(null)}
+        onPositionChange={setFactCheckPopupPosition}
         onRun={reviewWithAi}
       />
       <FactCheckAnswerPanel

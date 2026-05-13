@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type PointerEvent } from "react";
 import { Button } from "ufoo-ui";
 import { useLanguage } from "@/lib/i18n";
 
@@ -27,6 +28,7 @@ type FactCheckPopupProps = {
   position: FactCheckPopupPosition | null;
   onBackgroundChange: (background: string) => void;
   onClose: () => void;
+  onPositionChange: (position: FactCheckPopupPosition) => void;
   onRun: () => void;
 };
 
@@ -45,19 +47,77 @@ export function FactCheckPopup({
   position,
   onBackgroundChange,
   onClose,
+  onPositionChange,
   onRun,
 }: FactCheckPopupProps) {
   const { t } = useLanguage();
+  const [dragOffset, setDragOffset] = useState<FactCheckPopupPosition | null>(null);
 
   if (!position || !factCheckText) return null;
+  const currentPosition = position;
+
+  function clampPosition(left: number, top: number) {
+    if (typeof window === "undefined") {
+      return { left, top };
+    }
+
+    const width = Math.min(384, window.innerWidth - 24);
+    const height = 260;
+
+    return {
+      left: Math.min(Math.max(12, left), Math.max(12, window.innerWidth - width - 12)),
+      top: Math.min(Math.max(12, top), Math.max(12, window.innerHeight - height - 12)),
+    };
+  }
+
+  function startDrag(event: PointerEvent<HTMLDivElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragOffset({
+      left: event.clientX - currentPosition.left,
+      top: event.clientY - currentPosition.top,
+    });
+  }
+
+  function moveDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!dragOffset) return;
+
+    onPositionChange(clampPosition(
+      event.clientX - dragOffset.left,
+      event.clientY - dragOffset.top,
+    ));
+  }
+
+  function endDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!dragOffset) return;
+
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    setDragOffset(null);
+  }
 
   return (
     <div
       className="fixed z-50 w-[calc(100vw-1.5rem)] max-w-sm rounded-lg border border-stone-300 bg-white p-3 shadow-2xl"
-      style={{ left: position.left, top: position.top }}
+      style={{ left: currentPosition.left, top: currentPosition.top }}
     >
-      <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-stone-300 bg-white" />
+      <div className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 border-b border-l border-stone-300 bg-white" />
       <div className="relative grid gap-2">
+        <div
+          className="flex cursor-move select-none items-center justify-between rounded-md bg-stone-100 px-2 py-1.5 text-xs font-black uppercase tracking-normal text-stone-700"
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        >
+          <span>{t.aiReview}</span>
+          <svg aria-hidden="true" className="h-4 w-4 text-stone-500" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="9" cy="7" r="1" />
+            <circle cx="15" cy="7" r="1" />
+            <circle cx="9" cy="12" r="1" />
+            <circle cx="15" cy="12" r="1" />
+            <circle cx="9" cy="17" r="1" />
+            <circle cx="15" cy="17" r="1" />
+          </svg>
+        </div>
         <div className="max-h-20 overflow-y-auto rounded-md bg-stone-50 p-2 font-mono text-xs leading-5 text-stone-950">
           {factCheckText}
         </div>
