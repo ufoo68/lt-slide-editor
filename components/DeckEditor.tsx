@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { type KeyboardEvent, type MouseEvent, type SyntheticEvent, type TouchEvent, useEffect, useMemo, useState } from "react";
 import { Button, Input, Switch, Tabs } from "ufoo-ui";
 import { useAuth } from "@/components/AuthProvider";
+import { DeckEditorToolbar } from "@/components/DeckEditorToolbar";
+import { FactCheckAnswerPanel, FactCheckPopup, type FactCheckPopupPosition, type FactCheckReview } from "@/components/FactCheckUi";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
+import { MediaLibraryDrawer, type MediaLibraryItem } from "@/components/MediaLibraryDrawer";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
+import { SharedSlidesDrawer, type LibrarySlide } from "@/components/SharedSlidesDrawer";
 import { SlidePreview } from "@/components/SlidePreview";
 import { joinEditableSlides, parseDeckMarkdown, renderSlides, slideThemes, splitEditableSlides, updateDeckSettings, type SlideDeckSettings, type SlideTheme } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
@@ -23,23 +26,6 @@ type Deck = {
   updatedAt: string;
 };
 
-type LibrarySlide = {
-  id: string;
-  title: string;
-  markdown: string;
-  updatedAt: string;
-};
-
-type MediaLibraryItem = {
-  contentType: string;
-  id: string;
-  filename: string;
-  markdown: string;
-  size: number;
-  updatedAt: string;
-  url: string;
-};
-
 type DeckEditorProps = {
   mode: "new" | "edit";
 };
@@ -49,23 +35,6 @@ type SavedDeckState = {
   presentationMinutes: number;
   title: string;
   visibility: "private" | "public";
-};
-
-type FactCheckSource = {
-  title: string;
-  url: string;
-  note: string;
-};
-
-type AiReview = {
-  selectedText: string;
-  answer: string;
-  sources: FactCheckSource[];
-};
-
-type FactCheckPopupPosition = {
-  left: number;
-  top: number;
 };
 
 const initialMarkdown = `---
@@ -145,7 +114,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [selectedText, setSelectedText] = useState("");
   const [factCheckPopupPosition, setFactCheckPopupPosition] = useState<FactCheckPopupPosition | null>(null);
   const [factCheckBackground, setFactCheckBackground] = useState("");
-  const [aiReview, setAiReview] = useState<AiReview | null>(null);
+  const [aiReview, setAiReview] = useState<FactCheckReview | null>(null);
   const [aiReviewError, setAiReviewError] = useState<string | null>(null);
   const [aiReviewLoading, setAiReviewLoading] = useState(false);
   const [aiReviewMinimized, setAiReviewMinimized] = useState(false);
@@ -382,7 +351,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           title,
         }),
       });
-      const data = (await response.json()) as { review?: AiReview; error?: string; message?: string };
+      const data = (await response.json()) as { review?: FactCheckReview; error?: string; message?: string };
       if (!response.ok || !data.review) {
         if (response.status === 503) {
           throw new Error(t.aiReviewNotConfigured);
@@ -529,107 +498,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     <>
       <Header />
       <main className="mx-auto flex min-h-[calc(100dvh-4rem-1px)] max-w-7xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
-        <div className="grid gap-3 lg:flex lg:flex-wrap lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-2 lg:block">
-            <Link
-              aria-label={t.dashboard}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-foreground lg:hidden"
-              href="/dashboard"
-            >
-              <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </Link>
-            <Link className="hidden text-sm font-semibold text-primary lg:inline" href="/dashboard">
-              {t.dashboard}
-            </Link>
-            <input
-              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:text-xl lg:mt-1 lg:w-full lg:min-w-[18rem] lg:text-2xl"
-              onChange={(event) => setTitle(event.target.value)}
-              value={title}
-            />
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 lg:grid lg:grid-cols-2 xl:flex xl:flex-wrap xl:justify-end">
-            {deck?.visibility === "public" ? (
-              <Link className="shrink-0 lg:col-span-2 xl:col-span-1" href={`/view/${deck.slug}`} target="_blank">
-                <Button aria-label={t.openPublicUrl} className="h-9 w-9 min-w-9 px-0 xl:h-10 xl:w-auto xl:px-3" size="sm" variant="outline">
-                  <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M15 3h6v6" />
-                    <path d="M10 14 21 3" />
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  </svg>
-                  <span className="hidden xl:inline">{t.openPublicUrl}</span>
-                </Button>
-              </Link>
-            ) : null}
-            <label className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-white px-1.5 text-sm font-semibold xl:h-10 lg:col-span-2 xl:col-span-1">
-              <span className="sr-only">{t.presentationTime}</span>
-              <svg aria-hidden="true" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
-              <input
-                aria-label={t.presentationTime}
-                className="h-8 w-8 bg-transparent text-right outline-none sm:w-12"
-                max={180}
-                min={1}
-                onChange={(event) => setPresentationMinutes(Math.max(1, Math.min(180, Number(event.target.value) || 1)))}
-                type="number"
-                value={presentationMinutes}
-              />
-              <span className="text-xs">{t.minutesUnit}</span>
-            </label>
-            <Switch
-              className="flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-2 text-sm font-semibold xl:h-10 xl:px-3 xl:justify-start"
-              isSelected={visibility === "public"}
-              size="sm"
-              onChange={(selected) => setVisibility(selected ? "public" : "private")}
-            >
-              <Switch.Control
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  visibility === "public" ? "bg-mint" : "bg-stone-300"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-[left] ${
-                    visibility === "public" ? "left-[18px]" : "left-0.5"
-                  }`}
-                />
-              </Switch.Control>
-              {t.public}
-            </Switch>
-            <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
-              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <rect height="18" rx="2" width="18" x="3" y="3" />
-                <circle cx="9" cy="9" r="2" />
-                <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
-              </svg>
-              <span className="hidden xl:inline">{t.mediaTab}</span>
-            </Button>
-            <Button aria-label={t.sharedSlidesTab} className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3" variant="outline" onPress={() => setLibraryOpen(true)}>
-              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <rect height="14" rx="2" width="18" x="3" y="5" />
-                <path d="M7 9h10" />
-                <path d="M7 13h6" />
-              </svg>
-              <span className="hidden xl:inline">{t.sharedSlidesTab}</span>
-            </Button>
-            <Button
-              aria-label={t.save}
-              className="h-9 w-9 min-w-9 shrink-0 px-0 xl:h-10 xl:w-auto xl:px-3"
-              isDisabled={busy || !title.trim() || !hasUnsavedChanges}
-              variant="primary"
-              onPress={save}
-            >
-              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
-                <path d="M17 21v-8H7v8" />
-                <path d="M7 3v5h8" />
-              </svg>
-              <span className="hidden xl:inline">{t.save}</span>
-            </Button>
-          </div>
-        </div>
+        <DeckEditorToolbar
+          busy={busy}
+          hasUnsavedChanges={hasUnsavedChanges}
+          presentationMinutes={presentationMinutes}
+          publicSlug={deck?.visibility === "public" ? deck.slug : null}
+          title={title}
+          visibility={visibility}
+          onLibraryOpen={() => setLibraryOpen(true)}
+          onMediaOpen={() => setMediaOpen(true)}
+          onPresentationMinutesChange={setPresentationMinutes}
+          onSave={save}
+          onTitleChange={setTitle}
+          onVisibilityChange={setVisibility}
+        />
 
         {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         {status ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
@@ -867,209 +749,43 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           </aside>
         </section>
       </main>
-      {factCheckPopupPosition && factCheckText ? (
-        <div
-          className="fixed z-50 w-[calc(100vw-1.5rem)] max-w-sm rounded-lg border border-stone-300 bg-white p-3 shadow-2xl"
-          style={{ left: factCheckPopupPosition.left, top: factCheckPopupPosition.top }}
-        >
-          <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-stone-300 bg-white" />
-          <div className="relative grid gap-2">
-            <div className="max-h-20 overflow-y-auto rounded-md bg-stone-50 p-2 font-mono text-xs leading-5 text-stone-950">
-              {factCheckText}
-            </div>
-            <label className="grid gap-1 text-xs font-bold text-stone-900">
-              <span>{t.aiReviewBackground}</span>
-              <textarea
-                className="min-h-20 resize-y rounded-md border border-stone-400 bg-stone-50 p-2 text-sm font-medium leading-5 text-stone-800 outline-mint placeholder:text-stone-500"
-                maxLength={5000}
-                onChange={(event) => setFactCheckBackground(event.target.value)}
-                placeholder={t.aiReviewBackgroundPlaceholder}
-                value={factCheckBackground}
-              />
-            </label>
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="outline" onPress={() => setFactCheckPopupPosition(null)}>
-                {t.close}
-              </Button>
-              <Button isDisabled={aiReviewLoading} size="sm" variant="primary" onPress={reviewWithAi}>
-                {aiReviewLoading ? t.aiReviewing : t.runAiReview}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      <aside className="fixed bottom-4 right-4 z-40 grid max-h-[min(34rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-lg gap-3 overflow-y-auto rounded-lg border border-sky-200 bg-white p-4 shadow-2xl">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-black uppercase tracking-normal text-stone-700">{t.aiReview}</h2>
-          <Button
-            aria-label={aiReviewMinimized ? t.aiReviewExpand : t.aiReviewMinimize}
-            className="h-8 w-8 min-w-8 px-0"
-            size="sm"
-            variant="outline"
-            onPress={() => setAiReviewMinimized((minimized) => !minimized)}
-          >
-            <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-              {aiReviewMinimized ? (
-                <>
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                  <path d="M16 3h3a2 2 0 0 1 2 2v3" />
-                  <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
-                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                </>
-              ) : (
-                <path d="M5 12h14" />
-              )}
-            </svg>
-          </Button>
-        </div>
-        {!aiReviewMinimized && aiReviewLoading ? <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-950">{t.aiReviewing}</p> : null}
-        {!aiReviewMinimized && aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm font-semibold text-red-800">{aiReviewError}</p> : null}
-        {!aiReviewMinimized && aiReview ? (
-          <>
-            <div className="rounded-md bg-sky-50 p-3 text-sm text-sky-950">
-              <p className="whitespace-pre-wrap font-semibold leading-6">{aiReview.answer}</p>
-            </div>
-            {aiReview.sources.length ? (
-              <div className="grid gap-2">
-                <h3 className="text-xs font-black uppercase tracking-normal text-stone-700">{t.aiReviewSources}</h3>
-                <ul className="grid gap-2">
-                  {aiReview.sources.map((source) => (
-                    <li className="rounded-md border border-line bg-white p-3 text-sm" key={source.url}>
-                      <a className="font-semibold text-sky-800 underline-offset-2 hover:underline" href={source.url} rel="noreferrer" target="_blank">
-                        {source.title}
-                      </a>
-                      <p className="mt-1 break-all text-xs font-medium text-stone-700">{source.url}</p>
-                      <p className="mt-2 leading-6 text-stone-900">{source.note}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              ) : null}
-          </>
-        ) : !aiReviewMinimized && !aiReviewLoading && !aiReviewError ? (
-          <p className="rounded-md bg-stone-50 p-3 text-sm font-medium leading-6 text-stone-700">{t.aiReviewEmpty}</p>
-        ) : null}
-      </aside>
+      <FactCheckPopup
+        background={factCheckBackground}
+        factCheckText={factCheckText}
+        isLoading={aiReviewLoading}
+        position={factCheckPopupPosition}
+        onBackgroundChange={setFactCheckBackground}
+        onClose={() => setFactCheckPopupPosition(null)}
+        onRun={reviewWithAi}
+      />
+      <FactCheckAnswerPanel
+        error={aiReviewError}
+        isLoading={aiReviewLoading}
+        isMinimized={aiReviewMinimized}
+        review={aiReview}
+        onMinimizedChange={setAiReviewMinimized}
+      />
       {libraryOpen ? (
-        <div className="fixed inset-0 z-40">
-          <button
-            aria-label={t.closeSharedSlides}
-            className="absolute inset-0 bg-black/20"
-            onClick={() => setLibraryOpen(false)}
-            type="button"
-          />
-          <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">{t.sharedSlidesTab}</h2>
-              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setLibraryOpen(false)} type="button">
-                {t.close}
-              </button>
-            </div>
-            <Link className="rounded-md bg-mint px-4 py-3 text-center text-sm font-semibold text-white" href="/shared-slides/new">
-              {t.createSharedSlide}
-            </Link>
-            {libraryError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{libraryError}</p> : null}
-            <div className="grid gap-2">
-              {libraryLoading ? <LoadingBlock label={t.sharedSlidesLoading} /> : null}
-              {!libraryLoading && librarySlides.length ? (
-                librarySlides.map((slide) => (
-                  <article className="rounded-md border border-line bg-white p-3" key={slide.id}>
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black">{slide.title}</h3>
-                      <p className="mt-1 text-xs text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ").slice(0, 120)}</p>
-                    </div>
-                    <button
-                      className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
-                      onClick={() => insertLibrarySlideAfterCurrent(slide)}
-                      type="button"
-                    >
-                      {t.addToNextPage}
-                    </button>
-                    <button
-                      className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
-                      onClick={() => copyLibrarySlide(slide)}
-                      type="button"
-                    >
-                      {t.copyMarkdown}
-                    </button>
-                  </article>
-                ))
-              ) : !libraryLoading ? (
-                <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">{t.noSharedSlides}</p>
-                </div>
-              ) : null}
-            </div>
-          </aside>
-        </div>
+        <SharedSlidesDrawer
+          error={libraryError}
+          isLoading={libraryLoading}
+          slides={librarySlides}
+          onClose={() => setLibraryOpen(false)}
+          onCopySlide={copyLibrarySlide}
+          onInsertSlide={insertLibrarySlideAfterCurrent}
+        />
       ) : null}
       {mediaOpen ? (
-        <div className="fixed inset-0 z-40">
-          <button
-            aria-label={t.closeMediaLibrary}
-            className="absolute inset-0 bg-black/20"
-            onClick={() => setMediaOpen(false)}
-            type="button"
-          />
-          <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">{t.mediaTab}</h2>
-              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setMediaOpen(false)} type="button">
-                {t.close}
-              </button>
-            </div>
-            <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              {t.uploadMedia}
-              <input
-                accept="image/*,video/*"
-                className="sr-only"
-                disabled={uploadingMedia}
-                onChange={(event) => {
-                  uploadAndInsertMedia(event.target.files?.[0] ?? null);
-                  event.currentTarget.value = "";
-                }}
-                type="file"
-              />
-            </label>
-            {mediaError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{mediaError}</p> : null}
-            <div className="grid gap-2">
-              {mediaLoading ? <LoadingBlock label={t.mediaLoading} /> : null}
-              {!mediaLoading && media.length ? (
-                media.map((item) => (
-                  <article className="rounded-md border border-line bg-white p-3" key={item.id}>
-                    <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
-                      {item.contentType.startsWith("video/") ? (
-                        <video className="h-full w-full bg-black object-contain" controls preload="metadata" src={item.url} title={item.filename} />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img alt={item.filename} className="h-full w-full object-contain" src={item.url} />
-                      )}
-                    </div>
-                    <h3 className="mt-3 truncate text-sm font-black">{item.filename}</h3>
-                    <button
-                      className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
-                      onClick={() => insertMedia(item)}
-                      type="button"
-                    >
-                      {t.addToCurrentPage}
-                    </button>
-                    <button
-                      className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
-                      onClick={() => copyMediaMarkdown(item)}
-                      type="button"
-                    >
-                      {t.copyMarkdown}
-                    </button>
-                  </article>
-                ))
-              ) : !mediaLoading ? (
-                <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">{t.noMedia}</p>
-                </div>
-              ) : null}
-            </div>
-          </aside>
-        </div>
+        <MediaLibraryDrawer
+          error={mediaError}
+          isLoading={mediaLoading}
+          isUploading={uploadingMedia}
+          media={media}
+          onClose={() => setMediaOpen(false)}
+          onCopyMedia={copyMediaMarkdown}
+          onInsertMedia={insertMedia}
+          onUpload={uploadAndInsertMedia}
+        />
       ) : null}
       {presentationPreviewOpen ? (
         <div className="fixed inset-0 z-50 bg-ink">
