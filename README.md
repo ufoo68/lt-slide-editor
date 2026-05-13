@@ -19,7 +19,7 @@ Open `http://localhost:3000` in your browser. Node.js 24 LTS is expected. If you
 
 Local development uses the Firebase Auth Emulator. Create `.env` from `.env.example`; if you already have production or staging values, create `.env.local` from `.env.local.example` to override them for local development.
 
-To use Gemini LT review, set `GEMINI_API_KEY` in `.env.local`. The default model is `gemini-2.5-flash`; override it with `GEMINI_MODEL` if needed.
+To use Gemini fact checking with Google Search grounding, set `GEMINI_API_KEY` in `.env.local`. The default model is `gemini-2.5-flash`; override it with `GEMINI_MODEL` if needed.
 
 ### Common Commands
 

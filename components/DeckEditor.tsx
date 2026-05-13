@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Input, Switch, Tabs } from "ufoo-ui";
+import { type KeyboardEvent, type MouseEvent, type SyntheticEvent, type TouchEvent, useEffect, useMemo, useState } from "react";
+import { Button, Input, Switch, Tabs } from "ufoo-ui";
 import { useAuth } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
@@ -51,15 +51,21 @@ type SavedDeckState = {
   visibility: "private" | "public";
 };
 
-type AiReviewSuggestion = {
-  message: string;
-  severity: "high" | "medium" | "low";
-  slide?: number | null;
+type FactCheckSource = {
+  title: string;
+  url: string;
+  note: string;
 };
 
 type AiReview = {
-  summary: string;
-  suggestions: AiReviewSuggestion[];
+  selectedText: string;
+  answer: string;
+  sources: FactCheckSource[];
+};
+
+type FactCheckPopupPosition = {
+  left: number;
+  top: number;
 };
 
 const initialMarkdown = `---
@@ -116,7 +122,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [editMode, setEditMode] = useState<"page" | "theme" | "full">("page");
-  const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview" | "review">("markdown");
+  const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview">("markdown");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
   const [status, setStatus] = useState<string | null>(null);
@@ -135,9 +141,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [factCheckMode, setFactCheckMode] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [factCheckPopupPosition, setFactCheckPopupPosition] = useState<FactCheckPopupPosition | null>(null);
+  const [factCheckBackground, setFactCheckBackground] = useState("");
   const [aiReview, setAiReview] = useState<AiReview | null>(null);
   const [aiReviewError, setAiReviewError] = useState<string | null>(null);
   const [aiReviewLoading, setAiReviewLoading] = useState(false);
+  const [aiReviewMinimized, setAiReviewMinimized] = useState(false);
   const parsedMarkdown = useMemo(() => parseDeckMarkdown(markdown), [markdown]);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
@@ -152,6 +163,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     markdown !== savedState.markdown ||
     presentationMinutes !== savedState.presentationMinutes ||
     visibility !== savedState.visibility;
+  const factCheckText = selectedText.trim();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -289,9 +301,71 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     setStatus(t.insertedMediaCurrentPage(item.filename));
   }
 
+  function getPopupPosition(clientX: number, clientY: number) {
+    if (typeof window === "undefined") {
+      return { left: 12, top: 12 };
+    }
+
+    const width = Math.min(360, Math.max(280, window.innerWidth - 24));
+    const maxLeft = Math.max(12, window.innerWidth - width - 12);
+    const maxTop = Math.max(12, window.innerHeight - 260);
+
+    return {
+      left: Math.min(Math.max(12, clientX - width / 2), maxLeft),
+      top: Math.min(Math.max(12, clientY + 14), maxTop),
+    };
+  }
+
+  function updateSelectedText(textarea: HTMLTextAreaElement, position?: FactCheckPopupPosition) {
+    const nextSelectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+    setSelectedText(nextSelectedText);
+
+    if (!factCheckMode || !nextSelectedText.trim()) {
+      setFactCheckPopupPosition(null);
+      return;
+    }
+
+    if (position) {
+      setFactCheckPopupPosition(position);
+    }
+  }
+
+  function captureSelectedText(event: SyntheticEvent<HTMLTextAreaElement>) {
+    const textarea = event.currentTarget;
+    updateSelectedText(textarea);
+  }
+
+  function captureSelectedTextFromMouse(event: MouseEvent<HTMLTextAreaElement>) {
+    updateSelectedText(event.currentTarget, getPopupPosition(event.clientX, event.clientY));
+  }
+
+  function captureSelectedTextFromTouch(event: TouchEvent<HTMLTextAreaElement>) {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    updateSelectedText(event.currentTarget, getPopupPosition(touch.clientX, touch.clientY));
+  }
+
+  function captureSelectedTextFromKeyboard(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (typeof window === "undefined") {
+      updateSelectedText(event.currentTarget);
+      return;
+    }
+
+    const top = Math.min(96, window.innerHeight - 260);
+    updateSelectedText(event.currentTarget, getPopupPosition(window.innerWidth / 2, top));
+  }
+
   async function reviewWithAi() {
+    if (!factCheckText) {
+      setAiReviewError(t.aiReviewSelectText);
+      return;
+    }
+
     setAiReviewLoading(true);
     setAiReviewError(null);
+    setAiReview(null);
+    setAiReviewMinimized(false);
+    setFactCheckPopupPosition(null);
     try {
       const idToken = await token();
       const response = await fetch("/api/ai/review", {
@@ -300,14 +374,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           Authorization: `Bearer ${idToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ language, markdown, presentationMinutes, title }),
+        body: JSON.stringify({
+          background: factCheckBackground,
+          language,
+          markdown,
+          selectedText: factCheckText,
+          title,
+        }),
       });
-      const data = (await response.json()) as { review?: AiReview; error?: string };
+      const data = (await response.json()) as { review?: AiReview; error?: string; message?: string };
       if (!response.ok || !data.review) {
         if (response.status === 503) {
           throw new Error(t.aiReviewNotConfigured);
         }
-        throw new Error(data.error || t.aiReviewFailed);
+        throw new Error(data.message || data.error || t.aiReviewFailed);
       }
       setAiReview(data.review);
     } catch (err) {
@@ -556,25 +636,22 @@ export function DeckEditor({ mode }: DeckEditorProps) {
 
         <section className="grid min-h-0 flex-1 content-start gap-1.5 lg:hidden">
           <Tabs
-            aria-label={`${t.fullMarkdown} / ${t.preview} / ${t.aiReview}`}
+            aria-label={`${t.fullMarkdown} / ${t.preview}`}
             selectedKey={mobilePanel}
             onSelectionChange={(key) => {
-              if (key === "preview" || key === "review") {
-                setMobilePanel(key);
+              if (key === "preview") {
+                setMobilePanel("preview");
                 return;
               }
               setMobilePanel("markdown");
             }}
           >
-            <Tabs.List className="grid grid-cols-3 rounded-md border border-line bg-white p-1">
+            <Tabs.List className="grid grid-cols-2 rounded-md border border-line bg-white p-1">
               <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="markdown">
                 {t.fullMarkdown}
               </Tabs.Tab>
               <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="preview">
                 {t.preview}
-              </Tabs.Tab>
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="review">
-                {t.runAiReview}
               </Tabs.Tab>
             </Tabs.List>
           </Tabs>
@@ -582,7 +659,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <textarea
               className="min-h-[calc(100dvh-14.5rem)] resize-none rounded-lg border border-line bg-[#fffdf8] p-3 font-mono text-sm leading-6 outline-mint"
               onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+              onKeyUp={captureSelectedTextFromKeyboard}
               onChange={(event) => setMarkdown(event.target.value)}
+              onMouseUp={captureSelectedTextFromMouse}
+              onSelect={captureSelectedText}
+              onTouchEnd={captureSelectedTextFromTouch}
               spellCheck={false}
               value={markdown}
             />
@@ -611,58 +692,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 onActiveIndexChange={setActiveSlideIndex}
               />
             </div>
-          ) : (
-            <div className="grid content-start gap-2 rounded-lg border border-line bg-white/90 p-3 shadow-panel">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.aiReview}</h2>
-                <Button
-                  aria-label={t.runAiReview}
-                  className="h-9 px-3"
-                  isDisabled={aiReviewLoading || !markdown.trim()}
-                  size="sm"
-                  variant="outline"
-                  onPress={reviewWithAi}
-                >
-                  {aiReviewLoading ? t.aiReviewing : t.runAiReview}
-                </Button>
-              </div>
-              {aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{aiReviewError}</p> : null}
-              {aiReview ? (
-                <div className="grid max-h-[calc(100dvh-17rem)] gap-3 overflow-y-auto pr-1">
-                  <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-900">{aiReview.summary}</p>
-                  {aiReview.suggestions.length ? (
-                    <ul className="grid gap-2">
-                      {aiReview.suggestions.map((suggestion, index) => (
-                        <li className="rounded-md border border-line bg-white p-3 text-sm" key={`${suggestion.message}-${index}`}>
-                          <div className="mb-1 flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded px-2 py-0.5 text-xs font-black uppercase ${
-                                suggestion.severity === "high"
-                                  ? "bg-red-100 text-red-800"
-                                  : suggestion.severity === "medium"
-                                    ? "bg-amber-100 text-amber-900"
-                                    : "bg-emerald-100 text-emerald-800"
-                              }`}
-                            >
-                              {t.aiSeverity[suggestion.severity]}
-                            </span>
-                            {suggestion.slide ? (
-                              <span className="text-xs font-semibold text-stone-500">
-                                {t.slidePage} {suggestion.slide}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="text-stone-700">{suggestion.message}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : !aiReviewError ? (
-                <p className="text-sm text-stone-600">{t.aiReviewEmpty}</p>
-              ) : null}
-            </div>
-          )}
+          ) : null}
         </section>
 
         <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
@@ -673,29 +703,55 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} ${language === "ja" ? "slides" : "slides"}`}
               </span>
             </div>
-            <Tabs
-              aria-label={t.pageEdit}
-              selectedKey={editMode}
-              onSelectionChange={(key) => {
-                if (key === "theme" || key === "full") {
-                  setEditMode(key);
-                  return;
-                }
-                setEditMode("page");
-              }}
-            >
-              <Tabs.List className="rounded-md border border-line bg-white p-1">
-                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="page">
-                  {t.pageEdit}
-                </Tabs.Tab>
-                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="theme">
-                  {t.themeSettings}
-                </Tabs.Tab>
-                <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="full">
-                  {t.fullMarkdown}
-                </Tabs.Tab>
-              </Tabs.List>
-            </Tabs>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Tabs
+                aria-label={t.pageEdit}
+                selectedKey={editMode}
+                onSelectionChange={(key) => {
+                  if (key === "theme" || key === "full") {
+                    setEditMode(key);
+                    return;
+                  }
+                  setEditMode("page");
+                }}
+              >
+                <Tabs.List className="rounded-md border border-line bg-white p-1">
+                  <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="page">
+                    {t.pageEdit}
+                  </Tabs.Tab>
+                  <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="theme">
+                    {t.themeSettings}
+                  </Tabs.Tab>
+                  <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="full">
+                    {t.fullMarkdown}
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+              <Switch
+                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold"
+                isSelected={factCheckMode}
+                size="sm"
+                onChange={(selected) => {
+                  setFactCheckMode(selected);
+                  if (!selected) {
+                    setFactCheckPopupPosition(null);
+                  }
+                }}
+              >
+                <Switch.Control
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    factCheckMode ? "bg-mint" : "bg-stone-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-[left] ${
+                      factCheckMode ? "left-[18px]" : "left-0.5"
+                    }`}
+                  />
+                </Switch.Control>
+                {t.aiReviewMode}
+              </Switch>
+            </div>
             {editMode === "page" ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -727,7 +783,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               <textarea
                 className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
+                onKeyUp={captureSelectedTextFromKeyboard}
                 onChange={(event) => updateActiveSlide(event.target.value)}
+                onMouseUp={captureSelectedTextFromMouse}
+                onSelect={captureSelectedText}
+                onTouchEnd={captureSelectedTextFromTouch}
                 spellCheck={false}
                 value={activeSlideMarkdown}
               />
@@ -775,13 +835,17 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               <textarea
                 className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
                 onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+                onKeyUp={captureSelectedTextFromKeyboard}
                 onChange={(event) => setMarkdown(event.target.value)}
+                onMouseUp={captureSelectedTextFromMouse}
+                onSelect={captureSelectedText}
+                onTouchEnd={captureSelectedTextFromTouch}
                 spellCheck={false}
                 value={markdown}
               />
             )}
           </div>
-          <aside className="grid min-h-0 gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)]">
+          <aside className="grid min-h-0 gap-4 lg:h-full">
             <div>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
@@ -800,59 +864,92 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                 onActiveSlideMarkdownChange={updateActiveSlide}
               />
             </div>
-            <Card className="min-h-0 overflow-hidden border border-line bg-white/90 shadow-panel">
-              <Card.Content className="flex h-full min-h-0 flex-col">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.aiReview}</h2>
-                  <Button
-                    isDisabled={aiReviewLoading || !markdown.trim()}
-                    size="sm"
-                    variant="outline"
-                    onPress={reviewWithAi}
-                  >
-                    {aiReviewLoading ? t.aiReviewing : t.runAiReview}
-                  </Button>
-                </div>
-                {aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{aiReviewError}</p> : null}
-                {aiReview ? (
-                  <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto pr-1">
-                    <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-900">{aiReview.summary}</p>
-                    {aiReview.suggestions.length ? (
-                      <ul className="grid gap-2">
-                        {aiReview.suggestions.map((suggestion, index) => (
-                          <li className="rounded-md border border-line bg-white p-3 text-sm" key={`${suggestion.message}-${index}`}>
-                            <div className="mb-1 flex flex-wrap items-center gap-2">
-                              <span
-                                className={`rounded px-2 py-0.5 text-xs font-black uppercase ${
-                                  suggestion.severity === "high"
-                                    ? "bg-red-100 text-red-800"
-                                    : suggestion.severity === "medium"
-                                      ? "bg-amber-100 text-amber-900"
-                                      : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                {t.aiSeverity[suggestion.severity]}
-                              </span>
-                              {suggestion.slide ? (
-                                <span className="text-xs font-semibold text-stone-500">
-                                  {t.slidePage} {suggestion.slide}
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="text-stone-700">{suggestion.message}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : !aiReviewError ? (
-                  <p className="text-sm text-stone-600">{t.aiReviewEmpty}</p>
-                ) : null}
-              </Card.Content>
-            </Card>
           </aside>
         </section>
       </main>
+      {factCheckPopupPosition && factCheckText ? (
+        <div
+          className="fixed z-50 w-[calc(100vw-1.5rem)] max-w-sm rounded-lg border border-stone-300 bg-white p-3 shadow-2xl"
+          style={{ left: factCheckPopupPosition.left, top: factCheckPopupPosition.top }}
+        >
+          <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-stone-300 bg-white" />
+          <div className="relative grid gap-2">
+            <div className="max-h-20 overflow-y-auto rounded-md bg-stone-50 p-2 font-mono text-xs leading-5 text-stone-950">
+              {factCheckText}
+            </div>
+            <label className="grid gap-1 text-xs font-bold text-stone-900">
+              <span>{t.aiReviewBackground}</span>
+              <textarea
+                className="min-h-20 resize-y rounded-md border border-stone-400 bg-stone-50 p-2 text-sm font-medium leading-5 text-stone-800 outline-mint placeholder:text-stone-500"
+                maxLength={5000}
+                onChange={(event) => setFactCheckBackground(event.target.value)}
+                placeholder={t.aiReviewBackgroundPlaceholder}
+                value={factCheckBackground}
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onPress={() => setFactCheckPopupPosition(null)}>
+                {t.close}
+              </Button>
+              <Button isDisabled={aiReviewLoading} size="sm" variant="primary" onPress={reviewWithAi}>
+                {aiReviewLoading ? t.aiReviewing : t.runAiReview}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <aside className="fixed bottom-4 right-4 z-40 grid max-h-[min(34rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-lg gap-3 overflow-y-auto rounded-lg border border-sky-200 bg-white p-4 shadow-2xl">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-black uppercase tracking-normal text-stone-700">{t.aiReview}</h2>
+          <Button
+            aria-label={aiReviewMinimized ? t.aiReviewExpand : t.aiReviewMinimize}
+            className="h-8 w-8 min-w-8 px-0"
+            size="sm"
+            variant="outline"
+            onPress={() => setAiReviewMinimized((minimized) => !minimized)}
+          >
+            <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+              {aiReviewMinimized ? (
+                <>
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                  <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+                  <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                </>
+              ) : (
+                <path d="M5 12h14" />
+              )}
+            </svg>
+          </Button>
+        </div>
+        {!aiReviewMinimized && aiReviewLoading ? <p className="rounded-md bg-sky-50 p-3 text-sm font-semibold text-sky-950">{t.aiReviewing}</p> : null}
+        {!aiReviewMinimized && aiReviewError ? <p className="rounded-md bg-red-50 p-3 text-sm font-semibold text-red-800">{aiReviewError}</p> : null}
+        {!aiReviewMinimized && aiReview ? (
+          <>
+            <div className="rounded-md bg-sky-50 p-3 text-sm text-sky-950">
+              <p className="whitespace-pre-wrap font-semibold leading-6">{aiReview.answer}</p>
+            </div>
+            {aiReview.sources.length ? (
+              <div className="grid gap-2">
+                <h3 className="text-xs font-black uppercase tracking-normal text-stone-700">{t.aiReviewSources}</h3>
+                <ul className="grid gap-2">
+                  {aiReview.sources.map((source) => (
+                    <li className="rounded-md border border-line bg-white p-3 text-sm" key={source.url}>
+                      <a className="font-semibold text-sky-800 underline-offset-2 hover:underline" href={source.url} rel="noreferrer" target="_blank">
+                        {source.title}
+                      </a>
+                      <p className="mt-1 break-all text-xs font-medium text-stone-700">{source.url}</p>
+                      <p className="mt-2 leading-6 text-stone-900">{source.note}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              ) : null}
+          </>
+        ) : !aiReviewMinimized && !aiReviewLoading && !aiReviewError ? (
+          <p className="rounded-md bg-stone-50 p-3 text-sm font-medium leading-6 text-stone-700">{t.aiReviewEmpty}</p>
+        ) : null}
+      </aside>
       {libraryOpen ? (
         <div className="fixed inset-0 z-40">
           <button

@@ -1,49 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI, ApiError, Type } from "@google/genai";
+import { GoogleGenAI, ApiError } from "@google/genai";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 
 const reviewRequestSchema = z.object({
   title: z.string().trim().max(120),
-  markdown: z.string().trim().min(1).max(30000),
-  presentationMinutes: z.number().int().min(1).max(180),
+  background: z.string().trim().max(5000).optional().default(""),
+  markdown: z.string().trim().max(30000),
+  selectedText: z.string().trim().min(1).max(5000),
   language: z.enum(["ja", "en"]),
 });
 
 const reviewSchema = z.object({
-  summary: z.string().trim().min(1),
-  suggestions: z
+  selectedText: z.string().trim().min(1),
+  answer: z.string().trim().min(1),
+  sources: z
     .array(
       z.object({
-        slide: z.number().int().min(1).nullable().optional(),
-        severity: z.enum(["high", "medium", "low"]),
-        message: z.string().trim().min(1),
+        title: z.string().trim().min(1),
+        url: z.string().trim().url(),
+        note: z.string().trim().min(1),
       }),
     )
     .default([]),
 });
 
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    summary: { type: Type.STRING },
-    suggestions: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          slide: { type: Type.NUMBER, nullable: true },
-          severity: {
-            type: Type.STRING,
-            enum: ["high", "medium", "low"],
-          },
-          message: { type: Type.STRING },
-        },
-        required: ["severity", "message"],
-      },
-    },
-  },
-  required: ["summary", "suggestions"],
+type FactCheckReview = z.infer<typeof reviewSchema>;
+
+type GroundingSource = {
+  title: string;
+  url: string;
+  note: string;
 };
 
 function getAi() {
@@ -63,6 +50,81 @@ function sleep(ms: number) {
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function getString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function extractGroundingSources(response: unknown): GroundingSource[] {
+  const candidates = (response as { candidates?: unknown[] }).candidates;
+  const sources = new Map<string, GroundingSource>();
+
+  if (!Array.isArray(candidates)) return [];
+
+  for (const candidate of candidates) {
+    const groundingChunks = (candidate as { groundingMetadata?: { groundingChunks?: unknown[] } })
+      .groundingMetadata?.groundingChunks;
+
+    if (!Array.isArray(groundingChunks)) continue;
+
+    for (const chunk of groundingChunks) {
+      const web = (chunk as { web?: { title?: unknown; uri?: unknown } }).web;
+      const url = getString(web?.uri);
+
+      if (!isValidHttpUrl(url) || sources.has(url)) continue;
+
+      sources.set(url, {
+        title: getString(web?.title) || url,
+        url,
+        note: "Google Search grounding source.",
+      });
+    }
+  }
+
+  return Array.from(sources.values()).slice(0, 5);
+}
+
+function extractUrlSources(text: string): GroundingSource[] {
+  const urls = text.match(/https?:\/\/[^\s)\]}>"]+/g) ?? [];
+  const sources = new Map<string, GroundingSource>();
+
+  for (const rawUrl of urls) {
+    const url = rawUrl.replace(/[.,;:!?]+$/, "");
+
+    if (!isValidHttpUrl(url) || sources.has(url)) continue;
+
+    sources.set(url, {
+      title: url,
+      url,
+      note: "Source URL included in the answer.",
+    });
+  }
+
+  return Array.from(sources.values());
+}
+
+function mergeSources(...sourceGroups: GroundingSource[][]) {
+  const sources = new Map<string, GroundingSource>();
+
+  for (const group of sourceGroups) {
+    for (const source of group) {
+      if (!sources.has(source.url)) {
+        sources.set(source.url, source);
+      }
+    }
+  }
+
+  return Array.from(sources.values()).slice(0, 8);
 }
 
 function isQuotaExhausted(error: unknown) {
@@ -94,24 +156,33 @@ function isRetryableError(error: unknown) {
 function reviewPrompt(input: z.infer<typeof reviewRequestSchema>) {
   const outputLanguage = input.language === "ja" ? "Japanese" : "English";
 
-  return `You are a senior lightning-talk coach reviewing a Markdown slide deck.
+  return `You are a careful fact-checker for a Markdown slide editor.
 
-Return concise, practical feedback in ${outputLanguage}.
+Use Google Search for current and primary-source evidence where possible.
+Return concise fact-check results in ${outputLanguage} as plain text.
 
 Deck title:
 ${input.title || "Untitled"}
 
-Target duration:
-${input.presentationMinutes} minutes
+Selected text to fact-check:
+${input.selectedText}
 
-Review goals:
-- Judge whether the deck fits the target duration.
-- Find slides that are too dense, unclear, or missing a stronger takeaway.
-- Prefer specific, actionable advice over generic encouragement.
-- Keep the response short enough to scan while editing.
+User-provided background:
+${input.background || "(none)"}
 
-Markdown deck:
-${input.markdown}`;
+Available deck context:
+${input.markdown || "(no additional context)"}
+
+Rules:
+- Verify only the selected text.
+- Use the user-provided background and deck context only to understand ambiguous references, terms, timeframes, or scope.
+- Start with a short judgement such as supported, unsupported, mixed, or uncertain, translated for the output language.
+- Explain the reasoning in a few short paragraphs or bullets.
+- Include 1-5 source URLs. Prefer official pages, documentation, papers, standards, or reputable news.
+- Every source must be a real URL used to support the answer.
+- Do not invent URLs or citations.
+- Keep answer practical and easy to scan while editing.
+- Do not return JSON.`;
 }
 
 function getModels() {
@@ -170,8 +241,7 @@ async function generateReview(input: z.infer<typeof reviewRequestSchema>) {
           config: {
             temperature: 0.3,
             maxOutputTokens: 1200,
-            responseMimeType: "application/json",
-            responseSchema,
+            tools: [{ googleSearch: {} }],
           },
         }),
       );
@@ -182,9 +252,14 @@ async function generateReview(input: z.infer<typeof reviewRequestSchema>) {
         throw new Error(`Gemini returned empty response. model=${model}`);
       }
 
-      const parsed = JSON.parse(text);
-
-      return reviewSchema.parse(parsed);
+      return reviewSchema.parse({
+        answer: text.trim(),
+        selectedText: input.selectedText,
+        sources: mergeSources(
+          extractGroundingSources(response),
+          extractUrlSources(text),
+        ),
+      } satisfies FactCheckReview);
     } catch (error) {
       lastError = error;
 
