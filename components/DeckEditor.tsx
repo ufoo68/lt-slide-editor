@@ -2,7 +2,19 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { type KeyboardEvent, type MouseEvent, type SyntheticEvent, type TouchEvent, useEffect, useMemo, useState } from "react";
-import { Button, Input, Switch, Tabs } from "ufoo-ui";
+import {
+  Button,
+  EditorShell,
+  InspectorField,
+  InspectorInput,
+  InspectorPanel,
+  InspectorSection,
+  SlideThumbnail,
+  Switch,
+  ToolButton,
+  Toolbar,
+  ToolbarGroup,
+} from "ufoo-ui";
 import { useAuth } from "@/components/AuthProvider";
 import { DeckEditorToolbar } from "@/components/DeckEditorToolbar";
 import { FactCheckAnswerPanel, FactCheckPopup, type FactCheckPopupPosition, type FactCheckReview } from "@/components/FactCheckUi";
@@ -11,8 +23,9 @@ import { LoadingBlock } from "@/components/LoadingBlock";
 import { MediaLibraryDrawer, type MediaLibraryItem } from "@/components/MediaLibraryDrawer";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SharedSlidesDrawer, type LibrarySlide } from "@/components/SharedSlidesDrawer";
+import { SlideContent } from "@/components/SlideContent";
 import { SlidePreview } from "@/components/SlidePreview";
-import { joinEditableSlides, parseDeckMarkdown, renderSlides, slideThemes, splitEditableSlides, updateDeckSettings, type SlideDeckSettings, type SlideTheme } from "@/lib/markdown";
+import { joinEditableSlides, parseDeckMarkdown, renderSlides, slideThemeClasses, slideThemes, splitEditableSlides, updateDeckSettings, type SlideDeckSettings, type SlideTheme } from "@/lib/markdown";
 import { insertTextareaTab } from "@/lib/textarea";
 import { useLanguage } from "@/lib/i18n";
 
@@ -71,6 +84,20 @@ flowchart LR
 \`\`\`
 `;
 
+function slideTitle(markdown: string, fallback: string) {
+  const heading = markdown
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => /^#{1,3}\s+/.test(line));
+
+  return heading?.replace(/^#{1,3}\s+/, "").trim() || fallback;
+}
+
+function slideStatsLabel(markdown: string) {
+  const nonEmptyLines = markdown.split("\n").filter((line) => line.trim()).length;
+  return `${nonEmptyLines} lines`;
+}
+
 export function DeckEditor({ mode }: DeckEditorProps) {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
@@ -90,13 +117,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [markdown, setMarkdown] = useState(mode === "new" ? initialMarkdown : "");
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [editMode, setEditMode] = useState<"page" | "theme" | "full">("page");
-  const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview">("markdown");
+  const [fullMarkdownOpen, setFullMarkdownOpen] = useState(false);
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slideNavigatorOpen, setSlideNavigatorOpen] = useState(true);
+  const [themeInspectorOpen, setThemeInspectorOpen] = useState(true);
   const [deckLoading, setDeckLoading] = useState(mode === "edit");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
@@ -123,6 +151,15 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const presentationSlides = useMemo(
     () => renderSlides(markdown).map((slide) => ({ index: slide.index, html: slide.html })),
     [markdown],
+  );
+  const themeClasses = useMemo(() => slideThemeClasses(parsedMarkdown.settings.theme), [parsedMarkdown.settings.theme]);
+  const slideNavigatorItems = useMemo(
+    () => slides.map((slide, index) => ({
+      html: presentationSlides[index]?.html ?? "",
+      meta: `${slideStatsLabel(slide)} Markdown`,
+      title: slideTitle(slide, `${t.slidePage} ${index + 1}`),
+    })),
+    [presentationSlides, slides, t],
   );
   const slideCount = slides.length;
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(slides.length - 1, 0));
@@ -408,12 +445,15 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   function goNextSlide() {
     if (safeActiveSlideIndex < slides.length - 1) {
       setActiveSlideIndex((index) => index + 1);
-      return;
     }
+  }
 
-    const nextSlides = [...slides, ""];
+  function addNewSlideAfterCurrent() {
+    const nextSlides = [...slides];
+    const insertIndex = safeActiveSlideIndex + 1;
+    nextSlides.splice(insertIndex, 0, "");
     setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
-    setActiveSlideIndex(nextSlides.length - 1);
+    setActiveSlideIndex(insertIndex);
   }
 
   function deleteActiveSlide() {
@@ -515,172 +555,263 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           onVisibilityChange={setVisibility}
         />
 
-        {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-        {status ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
-
-        <section className="grid min-h-0 flex-1 content-start gap-1.5 lg:hidden">
-          <Tabs
-            aria-label={`${t.fullMarkdown} / ${t.preview}`}
-            selectedKey={mobilePanel}
-            onSelectionChange={(key) => {
-              if (key === "preview") {
-                setMobilePanel("preview");
-                return;
-              }
-              setMobilePanel("markdown");
-            }}
-          >
-            <Tabs.List className="grid grid-cols-2 rounded-md border border-line bg-white p-1">
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="markdown">
-                {t.fullMarkdown}
-              </Tabs.Tab>
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="preview">
-                {t.preview}
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-          {mobilePanel === "markdown" ? (
-            <textarea
-              className="min-h-[calc(100dvh-14.5rem)] resize-none rounded-lg border border-line bg-[#fffdf8] p-3 font-mono text-sm leading-6 outline-mint"
-              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
-              onKeyUp={captureSelectedTextFromKeyboard}
-              onChange={(event) => setMarkdown(event.target.value)}
-              onMouseUp={captureSelectedTextFromMouse}
-              onSelect={captureSelectedText}
-              onTouchEnd={captureSelectedTextFromTouch}
-              spellCheck={false}
-              value={markdown}
-            />
-          ) : mobilePanel === "preview" ? (
-            <div className="grid content-start gap-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
-                <Button
-                  aria-label={t.presentationView}
-                  className="h-10 w-10 min-w-10 px-0"
-                  size="sm"
-                  variant="outline"
-                  onPress={() => setPresentationPreviewOpen(true)}
-                >
-                  <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                    <rect height="14" rx="2" width="20" x="2" y="3" />
-                    <path d="M8 21h8" />
-                    <path d="M12 17v4" />
-                  </svg>
-                </Button>
-              </div>
-              <SlidePreview
-                activeIndex={safeActiveSlideIndex}
-                compact
-                markdown={markdown}
-                onActiveIndexChange={setActiveSlideIndex}
-              />
-            </div>
-          ) : null}
+        <section className="grid min-h-0 flex-1 content-start gap-2 lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
+            <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(true)}>
+              {t.fullMarkdown}
+            </Button>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <Button aria-label={t.previousPage} isDisabled={safeActiveSlideIndex === 0} size="sm" variant="outline" onPress={goPreviousSlide}>
+              ‹
+            </Button>
+            <Button aria-label={t.nextPage} isDisabled={safeActiveSlideIndex >= slides.length - 1} size="sm" variant="outline" onPress={goNextSlide}>
+              ›
+            </Button>
+            <Button aria-label={t.newPage} size="sm" variant="outline" onPress={addNewSlideAfterCurrent}>
+              +
+            </Button>
+            <Button aria-label={t.deletePage} size="sm" variant="outline" onPress={deleteActiveSlide}>
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 15H6L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+              </svg>
+            </Button>
+          </div>
+          <textarea
+            className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
+            onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
+            onKeyUp={captureSelectedTextFromKeyboard}
+            onChange={(event) => updateActiveSlide(event.target.value)}
+            onMouseUp={captureSelectedTextFromMouse}
+            onSelect={captureSelectedText}
+            onTouchEnd={captureSelectedTextFromTouch}
+            spellCheck={false}
+            value={activeSlideMarkdown}
+          />
+          <SlidePreview
+            activeIndex={safeActiveSlideIndex}
+            compact
+            hideControls
+            markdown={markdown}
+            onActiveIndexChange={setActiveSlideIndex}
+          />
         </section>
 
-        <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
-          <div className="flex min-h-0 flex-col gap-3 lg:h-full">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
-              <span className="text-sm font-semibold text-stone-600">
-                {editMode === "page" ? `${safeActiveSlideIndex + 1} / ${slideCount}` : `${slideCount} ${language === "ja" ? "slides" : "slides"}`}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Tabs
-                aria-label={t.pageEdit}
-                selectedKey={editMode}
-                onSelectionChange={(key) => {
-                  if (key === "theme" || key === "full") {
-                    setEditMode(key);
-                    return;
+        <EditorShell
+          className="deck-editor-shell hidden min-h-0 flex-1 rounded-lg bg-ufoo-dark text-ufoo-ink lg:grid"
+          toolbar={
+            <Toolbar className="justify-end">
+              <ToolbarGroup label="Panels">
+                <ToolButton
+                  active={slideNavigatorOpen}
+                  icon="◧"
+                  label={t.slidePage}
+                  onClick={() => setSlideNavigatorOpen((open) => !open)}
+                />
+                <ToolButton
+                  active={themeInspectorOpen}
+                  icon="◨"
+                  label={t.themeSettings}
+                  onClick={() => setThemeInspectorOpen((open) => !open)}
+                />
+              </ToolbarGroup>
+              <ToolbarGroup label={t.mediaTab}>
+                <ToolButton
+                  icon={
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                      <rect height="18" rx="2" width="18" x="3" y="3" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+                    </svg>
                   }
-                  setEditMode("page");
-                }}
-              >
-                <Tabs.List className="rounded-md border border-line bg-white p-1">
-                  <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="page">
-                    {t.pageEdit}
-                  </Tabs.Tab>
-                  <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="theme">
-                    {t.themeSettings}
-                  </Tabs.Tab>
-                  <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="full">
-                    {t.fullMarkdown}
-                  </Tabs.Tab>
-                </Tabs.List>
-              </Tabs>
-              <Switch
-                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold"
-                isSelected={factCheckMode}
-                size="sm"
-                onChange={(selected) => {
-                  setFactCheckMode(selected);
-                  if (!selected) {
-                    setFactCheckPopupPosition(null);
+                  label={t.mediaTab}
+                  showLabel
+                  onClick={() => setMediaOpen(true)}
+                />
+                <ToolButton
+                  icon={
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                      <rect height="14" rx="2" width="18" x="3" y="5" />
+                      <path d="M7 9h10" />
+                      <path d="M7 13h6" />
+                    </svg>
                   }
-                }}
-              >
-                <Switch.Control
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    factCheckMode ? "bg-mint" : "bg-stone-300"
-                  }`}
+                  label={t.sharedSlidesTab}
+                  showLabel
+                  onClick={() => setLibraryOpen(true)}
+                />
+              </ToolbarGroup>
+              <ToolbarGroup label={t.fullMarkdown}>
+                <ToolButton
+                  icon="M"
+                  label={t.fullMarkdown}
+                  showLabel
+                  onClick={() => setFullMarkdownOpen(true)}
+                />
+              </ToolbarGroup>
+              <ToolbarGroup label={t.presentationView}>
+                <ToolButton
+                  icon="▣"
+                  label={t.presentationView}
+                  showLabel
+                  onClick={() => setPresentationPreviewOpen(true)}
+                />
+              </ToolbarGroup>
+              <ToolbarGroup label={t.aiReview}>
+                <Switch
+                  className="flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-ufoo-panel-border px-2 text-sm font-semibold text-ufoo-ink"
+                  isSelected={factCheckMode}
+                  size="sm"
+                  onChange={(selected) => {
+                    setFactCheckMode(selected);
+                    if (!selected) {
+                      setFactCheckPopupPosition(null);
+                    }
+                  }}
                 >
-                  <span
-                    className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-[left] ${
-                      factCheckMode ? "left-[18px]" : "left-0.5"
+                  <Switch.Control
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      factCheckMode ? "bg-ufoo-neon" : "bg-ufoo-muted"
                     }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 block h-4 w-4 rounded-full bg-ufoo-dark shadow transition-[left] ${
+                        factCheckMode ? "left-[18px]" : "left-0.5"
+                      }`}
+                    />
+                  </Switch.Control>
+                  {t.aiReviewMode}
+                </Switch>
+              </ToolbarGroup>
+              <ToolbarGroup label={t.presentationTime}>
+                <label className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-ufoo-panel-border px-2 text-sm font-semibold text-ufoo-ink">
+                  <span className="sr-only">{t.presentationTime}</span>
+                  <svg aria-hidden="true" className="h-4 w-4 shrink-0 text-ufoo-muted" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                  <input
+                    aria-label={t.presentationTime}
+                    className="h-6 w-10 bg-transparent text-right outline-none"
+                    max={180}
+                    min={1}
+                    onChange={(event) => setPresentationMinutes(Math.max(1, Math.min(180, Number(event.target.value) || 1)))}
+                    type="number"
+                    value={presentationMinutes}
                   />
-                </Switch.Control>
-                {t.aiReviewMode}
-              </Switch>
-            </div>
-            {editMode === "page" ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="grid grid-cols-2 gap-2 sm:flex">
-                  <Button
-                    className="w-full sm:w-auto"
-                    isDisabled={safeActiveSlideIndex === 0}
-                    size="sm"
-                    variant="outline"
-                    onPress={goPreviousSlide}
+                  <span className="text-xs text-ufoo-muted">{t.minutesUnit}</span>
+                </label>
+                <Switch
+                  className="flex h-7 shrink-0 items-center justify-center gap-2 rounded-md border border-ufoo-panel-border px-2 text-sm font-semibold text-ufoo-ink"
+                  isSelected={visibility === "public"}
+                  size="sm"
+                  onChange={(selected) => setVisibility(selected ? "public" : "private")}
+                >
+                  <Switch.Control
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      visibility === "public" ? "bg-ufoo-neon" : "bg-ufoo-muted"
+                    }`}
                   >
-                    {t.previousPage}
-                  </Button>
-                  <Button
-                    className="w-full sm:w-auto"
-                    isDisabled={!activeSlideMarkdown.trim()}
-                    size="sm"
-                    variant="outline"
-                    onPress={goNextSlide}
-                  >
-                    {t.nextPage}
-                  </Button>
-                </div>
-                <Button className="w-full sm:w-auto" size="sm" variant="outline" onPress={deleteActiveSlide}>
-                  {t.deletePage}
-                </Button>
+                    <span
+                      className={`absolute top-0.5 block h-4 w-4 rounded-full bg-ufoo-dark shadow transition-[left] ${
+                        visibility === "public" ? "left-[18px]" : "left-0.5"
+                      }`}
+                    />
+                  </Switch.Control>
+                  {t.public}
+                </Switch>
+              </ToolbarGroup>
+              <ToolbarGroup label={t.save}>
+                <ToolButton
+                  disabled={busy || !title.trim() || !hasUnsavedChanges}
+                  icon={
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                      <path d="M17 21v-8H7v8" />
+                      <path d="M7 3v5h8" />
+                    </svg>
+                  }
+                  label={t.save}
+                  showLabel
+                  onClick={save}
+                />
+              </ToolbarGroup>
+            </Toolbar>
+          }
+          sidebar={
+            slideNavigatorOpen ? (
+            <div className="grid gap-2 p-3">
+              <div className="grid gap-2">
+                {slideNavigatorItems.map((item, index) => (
+                  <div className="relative" key={index}>
+                    <SlideThumbnail
+                      meta={item.meta}
+                      selected={index === safeActiveSlideIndex}
+                      slideNumber={index + 1}
+                      title={item.title}
+                      onClick={() => setActiveSlideIndex(index)}
+                    >
+                      <div className={`h-full overflow-hidden ${themeClasses.slide}`}>
+                        <div className="relative h-full">
+                          {parsedMarkdown.settings.header ? (
+                            <div className="pointer-events-none absolute left-2 right-2 top-1 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+                              {parsedMarkdown.settings.header}
+                            </div>
+                          ) : null}
+                          <SlideContent
+                            className="slide-content slide-thumbnail-content flex h-full flex-col justify-center px-2 py-3"
+                            html={item.html}
+                          />
+                          {parsedMarkdown.settings.footer ? (
+                            <div className="pointer-events-none absolute bottom-1 left-2 right-2 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+                              {parsedMarkdown.settings.footer}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </SlideThumbnail>
+                    {index === safeActiveSlideIndex ? (
+                      <button
+                        aria-label={t.deletePage}
+                        className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border border-red-300 bg-red-600 text-white shadow-lg transition-colors hover:border-red-300 hover:bg-red-500"
+                        onClick={deleteActiveSlide}
+                        type="button"
+                      >
+                        <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 15H6L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                        </svg>
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
               </div>
-            ) : null}
-            {editMode === "page" ? (
-              <textarea
-                className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
-                onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
-                onKeyUp={captureSelectedTextFromKeyboard}
-                onChange={(event) => updateActiveSlide(event.target.value)}
-                onMouseUp={captureSelectedTextFromMouse}
-                onSelect={captureSelectedText}
-                onTouchEnd={captureSelectedTextFromTouch}
-                spellCheck={false}
-                value={activeSlideMarkdown}
-              />
-            ) : editMode === "theme" ? (
-              <div className="grid content-start gap-4 rounded-lg border border-line bg-white/90 p-4 shadow-panel">
-                <label className="grid gap-1 text-sm font-semibold">
-                  {t.slideTheme}
+              <button
+                className="grid h-10 w-full place-items-center rounded-md border border-dashed border-ufoo-panel-border text-lg font-semibold text-ufoo-muted transition-colors hover:border-ufoo-neon hover:bg-ufoo-neon/10 hover:text-ufoo-neon"
+                onClick={addNewSlideAfterCurrent}
+                title={t.newPage}
+                type="button"
+              >
+                +
+              </button>
+            </div>
+            ) : undefined
+          }
+          inspector={
+            themeInspectorOpen ? (
+            <InspectorPanel title={t.themeSettings}>
+              <InspectorSection title={t.slideTheme}>
+                <InspectorField label={t.slideTheme}>
                   <select
-                    className="h-10 rounded-md border border-line bg-white px-3 text-sm font-semibold outline-mint"
+                    className="h-8 w-full rounded-md border border-ufoo-panel-border bg-[#0c0f15] px-2 text-sm text-white outline-none focus:border-ufoo-neon focus:ring-1 focus:ring-ufoo-neon"
                     onChange={(event) => updateSlideSetting("theme", event.target.value as SlideTheme)}
                     value={parsedMarkdown.settings.theme}
                   >
@@ -694,62 +825,60 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="grid gap-1 text-sm font-semibold">
-                  {t.slideHeader}
-                  <Input
+                </InspectorField>
+                <InspectorField label={t.slideHeader}>
+                  <InspectorInput
                     onChange={(event) => updateSlideSetting("header", event.target.value)}
                     value={parsedMarkdown.settings.header}
-                    variant="primary"
                   />
-                </label>
-                <label className="grid gap-1 text-sm font-semibold">
-                  {t.slideFooter}
-                  <Input
+                </InspectorField>
+                <InspectorField label={t.slideFooter}>
+                  <InspectorInput
                     onChange={(event) => updateSlideSetting("footer", event.target.value)}
                     value={parsedMarkdown.settings.footer}
-                    variant="primary"
                   />
-                </label>
-                <div className="rounded-md bg-stone-100 p-3 text-xs leading-5 text-stone-600">
-                  <code>{`---\ntheme: ${parsedMarkdown.settings.theme}\nheader: ${JSON.stringify(parsedMarkdown.settings.header)}\nfooter: ${JSON.stringify(parsedMarkdown.settings.footer)}\n---`}</code>
-                </div>
-              </div>
-            ) : (
-              <textarea
-                className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
-                onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
-                onKeyUp={captureSelectedTextFromKeyboard}
-                onChange={(event) => setMarkdown(event.target.value)}
-                onMouseUp={captureSelectedTextFromMouse}
-                onSelect={captureSelectedText}
-                onTouchEnd={captureSelectedTextFromTouch}
-                spellCheck={false}
-                value={markdown}
-              />
-            )}
-          </div>
-          <aside className="grid min-h-0 gap-4 lg:h-full">
-            <div>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
-                  <Button className="w-full sm:w-auto" size="sm" variant="outline" onPress={() => setPresentationPreviewOpen(true)}>
-                    {t.presentationView}
-                  </Button>
-                </div>
-              </div>
-              <SlidePreview
-                activeIndex={safeActiveSlideIndex}
-                editableMedia={editMode === "page"}
-                markdown={markdown}
-                onActiveIndexChange={setActiveSlideIndex}
-                onActiveSlideMarkdownChange={updateActiveSlide}
-              />
+                </InspectorField>
+              </InspectorSection>
+              <InspectorSection title="Front matter">
+                <pre className="overflow-x-auto rounded-md border border-ufoo-panel-border bg-[#0c0f15] p-3 text-xs leading-5 text-slate-200">
+                  {`---\ntheme: ${parsedMarkdown.settings.theme}\nheader: ${JSON.stringify(parsedMarkdown.settings.header)}\nfooter: ${JSON.stringify(parsedMarkdown.settings.footer)}\n---`}
+                </pre>
+              </InspectorSection>
+            </InspectorPanel>
+            ) : undefined
+          }
+          statusbar={
+            <div className="flex items-center justify-between gap-3">
+              <span>{safeActiveSlideIndex + 1} / {slideCount}</span>
+              <span>{hasUnsavedChanges ? t.unsavedChanges : t.saved}</span>
             </div>
-          </aside>
-        </section>
+          }
+        >
+          <div className="grid h-full min-h-0 gap-5 xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]">
+            <textarea
+              className="editor-markdown-textarea h-full min-h-0 resize-none rounded-lg border border-ufoo-panel-border p-4 font-mono text-sm leading-6 outline-ufoo-neon"
+              onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
+              onKeyUp={captureSelectedTextFromKeyboard}
+              onChange={(event) => updateActiveSlide(event.target.value)}
+              onMouseUp={captureSelectedTextFromMouse}
+              onSelect={captureSelectedText}
+              onTouchEnd={captureSelectedTextFromTouch}
+              spellCheck={false}
+              value={activeSlideMarkdown}
+            />
+            <InspectorPanel className="min-h-0 min-w-0 overflow-y-auto rounded-lg border border-ufoo-panel-border bg-[#15171d] text-white" title={t.preview}>
+              <InspectorSection title={`${t.slidePage}: ${safeActiveSlideIndex + 1}`}>
+                <SlidePreview
+                  activeIndex={safeActiveSlideIndex}
+                  editableMedia
+                  markdown={markdown}
+                  onActiveIndexChange={setActiveSlideIndex}
+                  onActiveSlideMarkdownChange={updateActiveSlide}
+                />
+              </InspectorSection>
+            </InspectorPanel>
+          </div>
+        </EditorShell>
       </main>
       <FactCheckPopup
         background={factCheckBackground}
@@ -761,13 +890,29 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         onPositionChange={setFactCheckPopupPosition}
         onRun={reviewWithAi}
       />
-      <FactCheckAnswerPanel
-        error={aiReviewError}
-        isLoading={aiReviewLoading}
-        isMinimized={aiReviewMinimized}
-        review={aiReview}
-        onMinimizedChange={setAiReviewMinimized}
-      />
+      {error || status ? (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-[60] grid w-[calc(100vw-2rem)] max-w-sm gap-2">
+          {error ? (
+            <p className="pointer-events-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 shadow-2xl">
+              {error}
+            </p>
+          ) : null}
+          {status ? (
+            <p className="pointer-events-auto rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 shadow-2xl">
+              {status}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {aiReviewLoading || aiReviewError || aiReview ? (
+        <FactCheckAnswerPanel
+          error={aiReviewError}
+          isLoading={aiReviewLoading}
+          isMinimized={aiReviewMinimized}
+          review={aiReview}
+          onMinimizedChange={setAiReviewMinimized}
+        />
+      ) : null}
       {libraryOpen ? (
         <SharedSlidesDrawer
           error={libraryError}
@@ -789,6 +934,33 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           onInsertMedia={insertMedia}
           onUpload={uploadAndInsertMedia}
         />
+      ) : null}
+      {fullMarkdownOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className="grid max-h-[calc(100dvh-2rem)] w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border border-ufoo-panel-border bg-ufoo-panel shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-ufoo-panel-border px-4 py-3">
+              <h2 className="text-sm font-black uppercase tracking-normal text-ufoo-ink">{t.fullMarkdown}</h2>
+              <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(false)}>
+                {t.close}
+              </Button>
+            </div>
+            <textarea
+              className="editor-markdown-textarea min-h-[min(42rem,calc(100dvh-10rem))] resize-none border-0 p-4 font-mono text-sm leading-6 outline-ufoo-neon"
+              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+              onKeyUp={captureSelectedTextFromKeyboard}
+              onChange={(event) => setMarkdown(event.target.value)}
+              onMouseUp={captureSelectedTextFromMouse}
+              onSelect={captureSelectedText}
+              onTouchEnd={captureSelectedTextFromTouch}
+              spellCheck={false}
+              value={markdown}
+            />
+            <div className="flex items-center justify-between gap-3 border-t border-ufoo-panel-border px-4 py-3 text-xs text-ufoo-muted">
+              <span>{slideCount} slides</span>
+              <span>{hasUnsavedChanges ? t.unsavedChanges : t.saved}</span>
+            </div>
+          </div>
+        </div>
       ) : null}
       {presentationPreviewOpen ? (
         <div className="fixed inset-0 z-50 bg-ink">

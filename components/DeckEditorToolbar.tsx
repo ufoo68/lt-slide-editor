@@ -56,7 +56,7 @@ export function DeckEditorToolbar({
           value={title}
         />
       </div>
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 lg:grid lg:grid-cols-2 xl:flex xl:flex-wrap xl:justify-end">
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 lg:hidden">
         {publicSlug ? (
           <Link className="shrink-0 lg:col-span-2 xl:col-span-1" href={`/view/${publicSlug}`} target="_blank">
             <Button aria-label={t.openPublicUrl} className="h-9 w-9 min-w-9 px-0 xl:h-10 xl:w-auto xl:px-3" size="sm" variant="outline">

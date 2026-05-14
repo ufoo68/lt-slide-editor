@@ -10,6 +10,7 @@ type SlidePreviewProps = {
   activeIndex?: number;
   compact?: boolean;
   editableMedia?: boolean;
+  hideControls?: boolean;
   markdown: string;
   onActiveIndexChange?: (index: number) => void;
   onActiveSlideMarkdownChange?: (markdown: string) => void;
@@ -140,7 +141,7 @@ function updateMarkdownMediaLayout(markdown: string, targetIndex: number, layout
   });
 }
 
-export function SlidePreview({ activeIndex, compact = false, editableMedia = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
+export function SlidePreview({ activeIndex, compact = false, editableMedia = false, hideControls = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
   const { t } = useLanguage();
   const slides = useMemo(() => renderSlides(markdown), [markdown]);
   const settings = useMemo(() => parseDeckMarkdown(markdown).settings, [markdown]);
@@ -328,27 +329,29 @@ export function SlidePreview({ activeIndex, compact = false, editableMedia = fal
           ) : null}
         </div>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-        <button
-          className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40`}
-          disabled={active === 0}
-          onClick={() => setActive(active - 1)}
-          type="button"
-        >
-          {t.previous}
-        </button>
-        <span className="px-2 text-center text-sm font-semibold text-stone-600">
-          {current.index + 1} / {slides.length}
-        </span>
-        <button
-          className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40`}
-          disabled={active >= slides.length - 1}
-          onClick={() => setActive(active + 1)}
-          type="button"
-        >
-          {t.next}
-        </button>
-      </div>
+      {hideControls ? null : (
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+          <button
+            className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40`}
+            disabled={active === 0}
+            onClick={() => setActive(active - 1)}
+            type="button"
+          >
+            {t.previous}
+          </button>
+          <span className="px-2 text-center text-sm font-semibold text-stone-600">
+            {current.index + 1} / {slides.length}
+          </span>
+          <button
+            className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40`}
+            disabled={active >= slides.length - 1}
+            onClick={() => setActive(active + 1)}
+            type="button"
+          >
+            {t.next}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

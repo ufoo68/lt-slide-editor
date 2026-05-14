@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Button, Tabs } from "ufoo-ui";
+import { Button, EditorShell, InspectorPanel, InspectorSection, ToolButton, Toolbar, ToolbarGroup } from "ufoo-ui";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
+import { MediaLibraryDrawer } from "@/components/MediaLibraryDrawer";
 import { SlidePreview } from "@/components/SlidePreview";
 import { useAuth } from "@/components/AuthProvider";
 import { splitSlides } from "@/lib/markdown";
@@ -63,7 +64,6 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [mobilePanel, setMobilePanel] = useState<"markdown" | "preview">("markdown");
   const [slideLoading, setSlideLoading] = useState(mode === "edit");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
@@ -261,7 +261,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
               value={title}
             />
           </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:hidden">
             <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
               <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
                 <rect height="18" rx="2" width="18" x="3" y="3" />
@@ -287,132 +287,105 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           </div>
         </div>
 
-        {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-        {status ? <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
-        {invalidSlideCount ? (
-          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">{t.sharedSlideSeparatorWarning}</p>
-        ) : null}
-
-        <section className="grid min-h-0 flex-1 content-start gap-1.5 lg:hidden">
-          <Tabs
-            aria-label={`${t.fullMarkdown} / ${t.preview}`}
-            selectedKey={mobilePanel}
-            onSelectionChange={(key) => setMobilePanel(key === "preview" ? "preview" : "markdown")}
-          >
-            <Tabs.List className="grid grid-cols-2 rounded-md border border-line bg-white p-1">
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="markdown">
-                {t.fullMarkdown}
-              </Tabs.Tab>
-              <Tabs.Tab className="rounded px-3 py-2 text-sm font-semibold" id="preview">
-                {t.preview}
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-          {mobilePanel === "markdown" ? (
-            <textarea
-              className="min-h-[calc(100dvh-14.5rem)] resize-none rounded-lg border border-line bg-[#fffdf8] p-3 font-mono text-sm leading-6 outline-mint"
-              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
-              onChange={(event) => setMarkdown(event.target.value)}
-              spellCheck={false}
-              value={markdown}
-            />
-          ) : (
-            <SlidePreview compact markdown={markdown} />
-          )}
-        </section>
-
-        <section className="hidden min-h-0 flex-1 items-start gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] lg:items-stretch lg:overflow-hidden">
-          <div className="flex min-h-0 flex-col gap-3 lg:h-full">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h1 className="text-sm font-black uppercase tracking-normal text-stone-600">Markdown</h1>
-              <span className="text-sm font-semibold text-stone-600">1 slide</span>
-            </div>
-            <textarea
-              className="min-h-[18rem] resize-none rounded-lg border border-line bg-[#fffdf8] p-4 font-mono text-sm leading-6 outline-mint sm:min-h-[24rem] lg:min-h-0 lg:flex-1"
-              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
-              onChange={(event) => setMarkdown(event.target.value)}
-              spellCheck={false}
-              value={markdown}
-            />
-          </div>
-          <aside className="grid min-h-0 gap-4 lg:h-full lg:content-start">
-            <div>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-black uppercase tracking-normal text-stone-600">{t.preview}</h2>
-                <span className="text-sm font-semibold text-stone-600">{t.sharedSlidesTab}</span>
-              </div>
-              <SlidePreview editableMedia markdown={markdown} onActiveSlideMarkdownChange={setMarkdown} />
-            </div>
-          </aside>
-        </section>
-      </main>
-      {mediaOpen ? (
-        <div className="fixed inset-0 z-40">
-          <button
-            aria-label={t.closeMediaLibrary}
-            className="absolute inset-0 bg-black/20"
-            onClick={() => setMediaOpen(false)}
-            type="button"
+        <section className="grid min-h-0 flex-1 content-start gap-2 lg:hidden">
+          <textarea
+            className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
+            onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+            onChange={(event) => setMarkdown(event.target.value)}
+            spellCheck={false}
+            value={markdown}
           />
-          <aside className="absolute right-0 top-0 grid h-full w-full max-w-md content-start gap-4 overflow-y-auto border-l border-line bg-paper p-5 shadow-panel">
+          <SlidePreview compact hideControls markdown={markdown} />
+        </section>
+
+        <EditorShell
+          className="deck-editor-shell hidden min-h-0 flex-1 rounded-lg bg-ufoo-dark text-ufoo-ink lg:grid"
+          toolbar={
+            <Toolbar className="justify-end">
+              <ToolbarGroup label={t.mediaTab}>
+                <ToolButton
+                  icon={
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                      <rect height="18" rx="2" width="18" x="3" y="3" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+                    </svg>
+                  }
+                  label={t.mediaTab}
+                  showLabel
+                  onClick={() => setMediaOpen(true)}
+                />
+              </ToolbarGroup>
+              <ToolbarGroup label={t.save}>
+                <ToolButton
+                  disabled={busy || !title.trim() || !markdown.trim() || invalidSlideCount || !hasUnsavedChanges}
+                  icon={
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                      <path d="M17 21v-8H7v8" />
+                      <path d="M7 3v5h8" />
+                    </svg>
+                  }
+                  label={t.save}
+                  showLabel
+                  onClick={saveSlide}
+                />
+              </ToolbarGroup>
+            </Toolbar>
+          }
+          statusbar={
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">{t.mediaTab}</h2>
-              <button className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold" onClick={() => setMediaOpen(false)} type="button">
-                {t.close}
-              </button>
+              <span>1 slide</span>
+              <span>{hasUnsavedChanges ? t.unsavedChanges : t.saved}</span>
             </div>
-            <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-              {t.uploadMedia}
-              <input
-                accept="image/*,video/*"
-                className="sr-only"
-                disabled={uploadingMedia}
-                onChange={(event) => {
-                  uploadAndInsertMedia(event.target.files?.[0] ?? null);
-                  event.currentTarget.value = "";
-                }}
-                type="file"
-              />
-            </label>
-            {mediaError ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{mediaError}</p> : null}
-            <div className="grid gap-2">
-              {mediaLoading ? <LoadingBlock label={t.mediaLoading} /> : null}
-              {!mediaLoading && media.length ? (
-                media.map((item) => (
-                  <article className="rounded-md border border-line bg-white p-3" key={item.id}>
-                    <div className="aspect-video overflow-hidden rounded-md border border-line bg-paper">
-                      {item.contentType.startsWith("video/") ? (
-                        <video className="h-full w-full bg-black object-contain" controls preload="metadata" src={item.url} title={item.filename} />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img alt={item.filename} className="h-full w-full object-contain" src={item.url} />
-                      )}
-                    </div>
-                    <h3 className="mt-3 truncate text-sm font-black">{item.filename}</h3>
-                    <button
-                      className="mt-3 h-9 w-full rounded-md bg-mint px-3 text-sm font-semibold text-white"
-                      onClick={() => insertMedia(item)}
-                      type="button"
-                    >
-                      {t.addToSharedSlide}
-                    </button>
-                    <button
-                      className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm font-semibold"
-                      onClick={() => copyMediaMarkdown(item)}
-                      type="button"
-                    >
-                      {t.copyMarkdown}
-                    </button>
-                  </article>
-                ))
-              ) : !mediaLoading ? (
-                <div className="rounded-md border border-dashed border-line bg-white p-4">
-                  <p className="text-sm text-stone-600">{t.noMedia}</p>
-                </div>
-              ) : null}
-            </div>
-          </aside>
+          }
+        >
+          <div className="grid h-full min-h-0 gap-5 xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]">
+            <textarea
+              className="editor-markdown-textarea h-full min-h-0 resize-none rounded-lg border border-ufoo-panel-border p-4 font-mono text-sm leading-6 outline-ufoo-neon"
+              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+              onChange={(event) => setMarkdown(event.target.value)}
+              spellCheck={false}
+              value={markdown}
+            />
+            <InspectorPanel className="min-h-0 min-w-0 overflow-y-auto rounded-lg border border-ufoo-panel-border bg-[#15171d] text-white" title={t.preview}>
+              <InspectorSection title={t.sharedSlidesTab}>
+                <SlidePreview editableMedia hideControls markdown={markdown} onActiveSlideMarkdownChange={setMarkdown} />
+              </InspectorSection>
+            </InspectorPanel>
+          </div>
+        </EditorShell>
+      </main>
+      {error || status || invalidSlideCount ? (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-[60] grid w-[calc(100vw-2rem)] max-w-sm gap-2">
+          {error ? (
+            <p className="pointer-events-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 shadow-2xl">
+              {error}
+            </p>
+          ) : null}
+          {status ? (
+            <p className="pointer-events-auto rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 shadow-2xl">
+              {status}
+            </p>
+          ) : null}
+          {invalidSlideCount ? (
+            <p className="pointer-events-auto rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900 shadow-2xl">
+              {t.sharedSlideSeparatorWarning}
+            </p>
+          ) : null}
         </div>
+      ) : null}
+      {mediaOpen ? (
+        <MediaLibraryDrawer
+          error={mediaError}
+          isLoading={mediaLoading}
+          isUploading={uploadingMedia}
+          media={media}
+          onClose={() => setMediaOpen(false)}
+          onCopyMedia={copyMediaMarkdown}
+          onInsertMedia={insertMedia}
+          onUpload={uploadAndInsertMedia}
+        />
       ) : null}
     </>
   );
