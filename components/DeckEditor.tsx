@@ -919,14 +919,36 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       {error || status ? (
         <div className="pointer-events-none fixed bottom-4 right-4 z-60 grid w-[calc(100vw-2rem)] max-w-sm gap-2">
           {error ? (
-            <p className="pointer-events-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 shadow-2xl">
-              {error}
-            </p>
+            <div className="pointer-events-auto flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 shadow-2xl">
+              <p className="min-w-0 flex-1">{error}</p>
+              <button
+                aria-label={t.close}
+                className="-mr-1 -mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-red-700 transition-colors hover:bg-red-100"
+                onClick={() => setError(null)}
+                type="button"
+              >
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
           ) : null}
           {status ? (
-            <p className="pointer-events-auto rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 shadow-2xl">
-              {status}
-            </p>
+            <div className="pointer-events-auto flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 shadow-2xl">
+              <p className="min-w-0 flex-1">{status}</p>
+              <button
+                aria-label={t.close}
+                className="-mr-1 -mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-emerald-700 transition-colors hover:bg-emerald-100"
+                onClick={() => setStatus(null)}
+                type="button"
+              >
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}
