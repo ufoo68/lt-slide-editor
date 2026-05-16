@@ -240,7 +240,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   return (
     <>
       <Header />
-      <main className="flex min-h-[calc(100dvh-4rem-1px)] w-full flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
+      <main className="flex min-h-[calc(100dvh-4rem-1px)] w-full flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-3 lg:overflow-hidden lg:py-3">
         <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-2 sm:block">
             <Link
@@ -340,7 +340,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             </div>
           }
         >
-          <div className="grid h-full min-h-0 gap-5 xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]">
+          <div className="grid h-full min-h-0 gap-3 lg:grid-cols-[minmax(18rem,0.78fr)_minmax(24rem,1.22fr)] xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]">
             <textarea
               className="editor-markdown-textarea h-full min-h-0 resize-none rounded-lg border border-ufoo-panel-border p-4 font-mono text-sm leading-6 outline-ufoo-neon"
               onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
@@ -348,9 +348,16 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
               spellCheck={false}
               value={markdown}
             />
-            <InspectorPanel className="min-h-0 min-w-0 overflow-y-auto rounded-lg border border-ufoo-panel-border bg-[#15171d] text-white" title={t.preview}>
-              <InspectorSection title={t.sharedSlidesTab}>
-                <SlidePreview editableMedia hideControls markdown={markdown} onActiveSlideMarkdownChange={setMarkdown} />
+            <InspectorPanel className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-ufoo-panel-border bg-[#15171d] text-white" title={t.preview}>
+              <InspectorSection className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" title={t.sharedSlidesTab}>
+                <SlidePreview
+                  className="editor-slide-preview h-full min-h-0"
+                  editableMedia
+                  frameClassName="editor-slide-preview-frame"
+                  hideControls
+                  markdown={markdown}
+                  onActiveSlideMarkdownChange={setMarkdown}
+                />
               </InspectorSection>
             </InspectorPanel>
           </div>

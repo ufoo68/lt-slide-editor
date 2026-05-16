@@ -8,8 +8,10 @@ import { useLanguage } from "@/lib/i18n";
 
 type SlidePreviewProps = {
   activeIndex?: number;
+  className?: string;
   compact?: boolean;
   editableMedia?: boolean;
+  frameClassName?: string;
   hideControls?: boolean;
   markdown: string;
   onActiveIndexChange?: (index: number) => void;
@@ -141,7 +143,17 @@ function updateMarkdownMediaLayout(markdown: string, targetIndex: number, layout
   });
 }
 
-export function SlidePreview({ activeIndex, compact = false, editableMedia = false, hideControls = false, markdown, onActiveIndexChange, onActiveSlideMarkdownChange }: SlidePreviewProps) {
+export function SlidePreview({
+  activeIndex,
+  className = "",
+  compact = false,
+  editableMedia = false,
+  frameClassName = "",
+  hideControls = false,
+  markdown,
+  onActiveIndexChange,
+  onActiveSlideMarkdownChange,
+}: SlidePreviewProps) {
   const { t } = useLanguage();
   const slides = useMemo(() => renderSlides(markdown), [markdown]);
   const settings = useMemo(() => parseDeckMarkdown(markdown).settings, [markdown]);
@@ -299,9 +311,9 @@ export function SlidePreview({ activeIndex, compact = false, editableMedia = fal
   }
 
   return (
-    <div className={compact ? "grid gap-1.5" : "grid gap-3"}>
+    <div className={`${compact ? "grid gap-1.5" : "grid gap-3"} ${className}`.trim()}>
       <div
-        className={`${compact ? "aspect-video max-h-[48dvh] w-full" : "aspect-video"} overflow-hidden rounded-lg border border-line shadow-panel ${themeClasses.slide}`}
+        className={`${compact ? "aspect-video max-h-[48dvh] w-full" : "aspect-video w-full"} overflow-hidden rounded-lg border border-line shadow-panel ${themeClasses.slide} ${frameClassName}`.trim()}
         onPointerCancel={finishMediaDrag}
         onPointerDown={startMediaDrag}
         onPointerLeave={clearMediaHover}

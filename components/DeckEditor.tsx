@@ -170,6 +170,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     presentationMinutes !== savedState.presentationMinutes ||
     visibility !== savedState.visibility;
   const factCheckText = selectedText.trim();
+  const bothSidePanesOpen = slideNavigatorOpen && themeInspectorOpen;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -539,7 +540,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   return (
     <>
       <Header />
-      <main className="flex min-h-[calc(100dvh-4rem-1px)] w-full flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-4 lg:overflow-hidden">
+      <main className="flex min-h-[calc(100dvh-4rem-1px)] w-full flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-3 lg:overflow-hidden lg:py-3">
         <DeckEditorToolbar
           busy={busy}
           hasUnsavedChanges={hasUnsavedChanges}
@@ -603,7 +604,9 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         </section>
 
         <EditorShell
-          className="deck-editor-shell hidden min-h-0 flex-1 rounded-lg bg-ufoo-dark text-ufoo-ink lg:grid"
+          className={`deck-editor-shell hidden min-h-0 flex-1 rounded-lg bg-ufoo-dark text-ufoo-ink lg:grid ${
+            bothSidePanesOpen ? "deck-editor-shell--both-panes" : ""
+          }`}
           toolbar={
             <Toolbar className="justify-end">
               <ToolbarGroup label="Panels">
@@ -854,7 +857,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             </div>
           }
         >
-          <div className="grid h-full min-h-0 gap-5 xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]">
+          <div
+            className={`grid h-full min-h-0 gap-3 ${
+              bothSidePanesOpen
+                ? "lg:grid-cols-[minmax(14rem,0.8fr)_minmax(18rem,1.2fr)] xl:grid-cols-[minmax(16rem,0.8fr)_minmax(24rem,1.2fr)] 2xl:grid-cols-[minmax(22rem,0.85fr)_minmax(32rem,1.35fr)]"
+                : "lg:grid-cols-[minmax(18rem,0.78fr)_minmax(24rem,1.22fr)] xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]"
+            }`}
+          >
             <textarea
               className="editor-markdown-textarea h-full min-h-0 resize-none rounded-lg border border-ufoo-panel-border p-4 font-mono text-sm leading-6 outline-ufoo-neon"
               onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
@@ -866,11 +875,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               spellCheck={false}
               value={activeSlideMarkdown}
             />
-            <InspectorPanel className="min-h-0 min-w-0 overflow-y-auto rounded-lg border border-ufoo-panel-border bg-[#15171d] text-white" title={t.preview}>
-              <InspectorSection title={`${t.slidePage}: ${safeActiveSlideIndex + 1}`}>
+            <InspectorPanel className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-ufoo-panel-border bg-[#15171d] text-white" title={t.preview}>
+              <InspectorSection className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" title={`${t.slidePage}: ${safeActiveSlideIndex + 1}`}>
                 <SlidePreview
                   activeIndex={safeActiveSlideIndex}
+                  className="editor-slide-preview h-full min-h-0 grid-rows-[minmax(0,1fr)_auto]"
                   editableMedia
+                  frameClassName="editor-slide-preview-frame"
                   markdown={markdown}
                   onActiveIndexChange={setActiveSlideIndex}
                   onActiveSlideMarkdownChange={updateActiveSlide}
