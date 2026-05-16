@@ -1,3 +1,5 @@
+name: lt-slide-editor
+
 services:
   postgres:
     image: postgres:16
@@ -50,5 +52,8 @@ services:
 
 volumes:
   postgres-data:
+    name: lt-slide-editor_postgres-data
   firebase-auth-data:
+    name: lt-slide-editor_firebase-auth-data
   minio-data:
+    name: lt-slide-editor_minio-data

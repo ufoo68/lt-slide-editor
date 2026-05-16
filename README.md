@@ -25,14 +25,15 @@ To use Gemini fact checking with Google Search grounding, set `GEMINI_API_KEY` i
 
 ```bash
 npm run local:up     # Start PostgreSQL, Firebase Auth Emulator, and MinIO
-npm run local:down   # Stop and remove the Compose environment
+npm run local:down   # Stop local services without deleting data
+npm run local:destroy  # Remove local service containers without deleting volumes
 npm run local:logs   # Show logs for PostgreSQL, Firebase Auth Emulator, and MinIO
 npm run local:reset  # Recreate the Compose volumes
 npm run db:migrate   # Apply Prisma migrations
 npm run check        # Run lint and typecheck
 ```
 
-`local:reset` and `db:reset` delete Compose volumes, so local PostgreSQL, Firebase Auth Emulator, and MinIO data will be removed. Back up any decks or images you need first.
+Compose volume names are pinned in `docker-compose.yml`, so local data continues to use the same PostgreSQL, Firebase Auth Emulator, and MinIO volumes even if the project is launched from a different directory name. `local:reset` and `db:reset` delete Compose volumes, so local PostgreSQL, Firebase Auth Emulator, and MinIO data will be removed. Back up any decks or images you need first.
 
 ### Local Services
 
