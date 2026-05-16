@@ -52,6 +52,8 @@ const md = new MarkdownIt({
   },
 });
 
+const slideSeparatorPattern = /\r?\n---[ \t]*(?:\r?\n|$)/g;
+
 function parseSlideTheme(value: string): SlideTheme {
   const normalized = value.trim().toLowerCase();
   if (normalized === "dark" || normalized === "light" || normalized === "mint") {
@@ -319,13 +321,13 @@ function sanitizeOptions(): sanitizeHtml.IOptions {
 
 export function splitSlides(markdown: string) {
   return parseDeckMarkdown(markdown).body
-    .split(/\n---\s*(?:\n|$)/g)
+    .split(slideSeparatorPattern)
     .map((slide) => slide.trim())
     .filter(Boolean);
 }
 
 export function splitEditableSlides(markdown: string) {
-  const slides = parseDeckMarkdown(markdown).body.split(/\n---\s*(?:\n|$)/g);
+  const slides = parseDeckMarkdown(markdown).body.split(slideSeparatorPattern);
   return slides.length ? slides : [""];
 }
 

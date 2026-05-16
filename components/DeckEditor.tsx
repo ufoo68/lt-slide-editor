@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { type KeyboardEvent, type MouseEvent, type SyntheticEvent, type TouchEvent, useEffect, useMemo, useState } from "react";
+import { type DragEvent, type KeyboardEvent, type MouseEvent, type SyntheticEvent, type TouchEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   EditorShell,
@@ -103,6 +103,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const router = useRouter();
   const { user, loading, token } = useAuth();
   const { language, t } = useLanguage();
+  const suppressSlideClickRef = useRef(false);
   const initialSavedState = useMemo<SavedDeckState>(
     () => ({
       markdown: mode === "new" ? initialMarkdown : "",
@@ -124,6 +125,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [slideNavigatorOpen, setSlideNavigatorOpen] = useState(true);
+  const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
+  const [slideDropIndex, setSlideDropIndex] = useState<number | null>(null);
   const [themeInspectorOpen, setThemeInspectorOpen] = useState(true);
   const [deckLoading, setDeckLoading] = useState(mode === "edit");
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -449,12 +452,70 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     }
   }
 
-  function addNewSlideAfterCurrent() {
-    const nextSlides = [...slides];
-    const insertIndex = safeActiveSlideIndex + 1;
-    nextSlides.splice(insertIndex, 0, "");
+  function addNewSlideAtEnd() {
+    const nextSlides = [...slides, ""];
     setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
-    setActiveSlideIndex(insertIndex);
+    setActiveSlideIndex(nextSlides.length - 1);
+  }
+
+  function reorderSlide(fromIndex: number, insertionIndex: number) {
+    const targetIndex = fromIndex < insertionIndex ? insertionIndex - 1 : insertionIndex;
+    if (fromIndex === targetIndex || fromIndex < 0 || fromIndex >= slides.length || targetIndex < 0 || targetIndex >= slides.length) {
+      return;
+    }
+
+    const nextSlides = [...slides];
+    const [movedSlide] = nextSlides.splice(fromIndex, 1);
+    nextSlides.splice(targetIndex, 0, movedSlide);
+    setMarkdown(joinEditableSlides(nextSlides, parsedMarkdown.frontMatter));
+    setActiveSlideIndex((currentIndex) => {
+      if (currentIndex === fromIndex) return targetIndex;
+      if (fromIndex < currentIndex && currentIndex <= targetIndex) return currentIndex - 1;
+      if (targetIndex <= currentIndex && currentIndex < fromIndex) return currentIndex + 1;
+      return currentIndex;
+    });
+  }
+
+  function selectSlide(index: number) {
+    if (suppressSlideClickRef.current) {
+      return;
+    }
+    setActiveSlideIndex(index);
+  }
+
+  function startSlideDrag(event: DragEvent<HTMLDivElement>, index: number) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+    setDraggedSlideIndex(index);
+    setSlideDropIndex(index);
+  }
+
+  function updateSlideDropIndex(event: DragEvent<HTMLDivElement>, index: number) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const insertionIndex = event.clientY < rect.top + rect.height / 2 ? index : index + 1;
+    setSlideDropIndex(insertionIndex);
+  }
+
+  function dropSlide(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const fromIndex = draggedSlideIndex ?? Number(event.dataTransfer.getData("text/plain"));
+    if (Number.isFinite(fromIndex) && slideDropIndex !== null) {
+      reorderSlide(fromIndex, slideDropIndex);
+      suppressSlideClickRef.current = true;
+      window.setTimeout(() => {
+        suppressSlideClickRef.current = false;
+      }, 0);
+    }
+    setDraggedSlideIndex(null);
+    setSlideDropIndex(null);
+  }
+
+  function finishSlideDrag() {
+    setDraggedSlideIndex(null);
+    setSlideDropIndex(null);
   }
 
   function deleteActiveSlide() {
@@ -570,7 +631,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <Button aria-label={t.nextPage} isDisabled={safeActiveSlideIndex >= slides.length - 1} size="sm" variant="outline" onPress={goNextSlide}>
               ›
             </Button>
-            <Button aria-label={t.newPage} size="sm" variant="outline" onPress={addNewSlideAfterCurrent}>
+            <Button aria-label={t.newPage} size="sm" variant="outline" onPress={addNewSlideAtEnd}>
               +
             </Button>
             <Button aria-label={t.deletePage} size="sm" variant="outline" onPress={deleteActiveSlide}>
@@ -751,55 +812,71 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <div className="grid gap-2 p-3">
               <div className="grid gap-2">
                 {slideNavigatorItems.map((item, index) => (
-                  <div className="relative" key={index}>
-                    <SlideThumbnail
-                      meta={item.meta}
-                      selected={index === safeActiveSlideIndex}
-                      slideNumber={index + 1}
-                      title={item.title}
-                      onClick={() => setActiveSlideIndex(index)}
-                    >
-                      <div className={`h-full overflow-hidden ${themeClasses.slide}`}>
-                        <div className="relative h-full">
-                          {parsedMarkdown.settings.header ? (
-                            <div className="pointer-events-none absolute left-2 right-2 top-1 z-10 truncate text-[0.42rem] font-semibold opacity-60">
-                              {parsedMarkdown.settings.header}
-                            </div>
-                          ) : null}
-                          <SlideContent
-                            className="slide-content slide-thumbnail-content flex h-full flex-col justify-center px-2 py-3"
-                            html={item.html}
-                          />
-                          {parsedMarkdown.settings.footer ? (
-                            <div className="pointer-events-none absolute bottom-1 left-2 right-2 z-10 truncate text-[0.42rem] font-semibold opacity-60">
-                              {parsedMarkdown.settings.footer}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </SlideThumbnail>
-                    {index === safeActiveSlideIndex ? (
-                      <button
-                        aria-label={t.deletePage}
-                        className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border border-red-300 bg-red-600 text-white shadow-lg transition-colors hover:border-red-300 hover:bg-red-500"
-                        onClick={deleteActiveSlide}
-                        type="button"
-                      >
-                        <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4h8v2" />
-                          <path d="M19 6l-1 15H6L5 6" />
-                          <path d="M10 11v6" />
-                          <path d="M14 11v6" />
-                        </svg>
-                      </button>
+                  <div key={index}>
+                    {slideDropIndex === index ? (
+                      <div className="mb-2 h-1 rounded-full bg-ufoo-neon shadow-[0_0_16px_rgba(0,243,255,0.45)]" />
                     ) : null}
+                    <div
+                      aria-grabbed={draggedSlideIndex === index}
+                      className={`relative cursor-grab active:cursor-grabbing ${draggedSlideIndex === index ? "opacity-55" : ""}`}
+                      draggable
+                      onDragEnd={finishSlideDrag}
+                      onDragOver={(event) => updateSlideDropIndex(event, index)}
+                      onDragStart={(event) => startSlideDrag(event, index)}
+                      onDrop={dropSlide}
+                    >
+                      <SlideThumbnail
+                        meta={item.meta}
+                        selected={index === safeActiveSlideIndex}
+                        slideNumber={index + 1}
+                        title={item.title}
+                        onClick={() => selectSlide(index)}
+                      >
+                        <div className={`h-full overflow-hidden ${themeClasses.slide}`}>
+                          <div className="relative h-full">
+                            {parsedMarkdown.settings.header ? (
+                              <div className="pointer-events-none absolute left-2 right-2 top-1 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+                                {parsedMarkdown.settings.header}
+                              </div>
+                            ) : null}
+                            <SlideContent
+                              className="slide-content slide-thumbnail-content flex h-full flex-col justify-center px-2 py-3"
+                              html={item.html}
+                            />
+                            {parsedMarkdown.settings.footer ? (
+                              <div className="pointer-events-none absolute bottom-1 left-2 right-2 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+                                {parsedMarkdown.settings.footer}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </SlideThumbnail>
+                      {index === safeActiveSlideIndex ? (
+                        <button
+                          aria-label={t.deletePage}
+                          className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border border-red-300 bg-red-600 text-white shadow-lg transition-colors hover:border-red-300 hover:bg-red-500"
+                          onClick={deleteActiveSlide}
+                          type="button"
+                        >
+                          <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M19 6l-1 15H6L5 6" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
+                {slideDropIndex === slides.length ? (
+                  <div className="h-1 rounded-full bg-ufoo-neon shadow-[0_0_16px_rgba(0,243,255,0.45)]" />
+                ) : null}
               </div>
               <button
                 className="grid h-10 w-full place-items-center rounded-md border border-dashed border-ufoo-panel-border text-lg font-semibold text-ufoo-muted transition-colors hover:border-ufoo-neon hover:bg-ufoo-neon/10 hover:text-ufoo-neon"
-                onClick={addNewSlideAfterCurrent}
+                onClick={addNewSlideAtEnd}
                 title={t.newPage}
                 type="button"
               >
