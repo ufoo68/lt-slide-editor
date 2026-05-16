@@ -207,7 +207,7 @@ export function PublicSlideshow({
               →
             </button>
             <button
-              className="col-span-4 h-10 rounded-md bg-white px-3 text-sm font-bold text-ink sm:col-span-1"
+              className="col-span-4 hidden h-10 rounded-md bg-white px-3 text-sm font-bold text-ink sm:col-span-1 sm:block"
               onClick={toggleFullscreen}
               type="button"
             >
@@ -245,7 +245,8 @@ export function PublicSlideshow({
         </section>
 
         <footer className="flex min-h-10 shrink-0 items-center justify-center px-4 pb-3 text-xs font-semibold text-white/45">
-          <span>← / → / Space / F</span>
+          <span className="sm:hidden">← / → / Space</span>
+          <span className="hidden sm:inline">← / → / Space / F</span>
         </footer>
       </div>
     </main>

@@ -119,6 +119,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [fullMarkdownOpen, setFullMarkdownOpen] = useState(false);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
   const [status, setStatus] = useState<string | null>(null);
@@ -620,9 +621,14 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         <section className="grid min-h-0 flex-1 content-start gap-2 lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
-            <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(true)}>
-              {t.fullMarkdown}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen(true)}>
+                {t.preview}
+              </Button>
+              <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(true)}>
+                {t.fullMarkdown}
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-2">
             <Button aria-label={t.previousPage} isDisabled={safeActiveSlideIndex === 0} size="sm" variant="outline" onPress={goPreviousSlide}>
@@ -654,13 +660,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             onTouchEnd={captureSelectedTextFromTouch}
             spellCheck={false}
             value={activeSlideMarkdown}
-          />
-          <SlidePreview
-            activeIndex={safeActiveSlideIndex}
-            compact
-            hideControls
-            markdown={markdown}
-            onActiveIndexChange={setActiveSlideIndex}
           />
         </section>
 
@@ -1047,6 +1046,25 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               <span>{slideCount} slides</span>
               <span>{hasUnsavedChanges ? t.unsavedChanges : t.saved}</span>
             </div>
+          </div>
+        </div>
+      ) : null}
+      {mobilePreviewOpen ? (
+        <div className="fixed inset-0 z-50 grid grid-rows-[auto_minmax(0,1fr)] bg-ink p-4 text-white lg:hidden">
+          <div className="flex items-center justify-between gap-3 pb-3">
+            <h2 className="min-w-0 truncate text-sm font-black uppercase tracking-normal text-ufoo-ink">{t.preview}</h2>
+            <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen(false)}>
+              {t.close}
+            </Button>
+          </div>
+          <div className="grid min-h-0 place-items-center">
+            <SlidePreview
+              activeIndex={safeActiveSlideIndex}
+              className="w-full max-w-5xl"
+              compact
+              markdown={markdown}
+              onActiveIndexChange={setActiveSlideIndex}
+            />
           </div>
         </div>
       ) : null}

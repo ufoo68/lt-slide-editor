@@ -65,6 +65,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [slideLoading, setSlideLoading] = useState(mode === "edit");
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
   const [mediaLoading, setMediaLoading] = useState(false);
@@ -262,6 +263,13 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:hidden">
+            <Button aria-label={t.preview} className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3" variant="outline" onPress={() => setMobilePreviewOpen(true)}>
+              <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span className="hidden sm:inline">{t.preview}</span>
+            </Button>
             <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
               <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
                 <rect height="18" rx="2" width="18" x="3" y="3" />
@@ -295,7 +303,6 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             spellCheck={false}
             value={markdown}
           />
-          <SlidePreview compact hideControls markdown={markdown} />
         </section>
 
         <EditorShell
@@ -393,6 +400,19 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           onInsertMedia={insertMedia}
           onUpload={uploadAndInsertMedia}
         />
+      ) : null}
+      {mobilePreviewOpen ? (
+        <div className="fixed inset-0 z-50 grid grid-rows-[auto_minmax(0,1fr)] bg-ink p-4 text-white lg:hidden">
+          <div className="flex items-center justify-between gap-3 pb-3">
+            <h2 className="min-w-0 truncate text-sm font-black uppercase tracking-normal text-ufoo-ink">{t.preview}</h2>
+            <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen(false)}>
+              {t.close}
+            </Button>
+          </div>
+          <div className="grid min-h-0 place-items-center">
+            <SlidePreview className="w-full max-w-5xl" compact markdown={markdown} />
+          </div>
+        </div>
       ) : null}
     </>
   );
