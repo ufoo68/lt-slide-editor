@@ -6,11 +6,14 @@ import { Suspense, type Key, useEffect, useState } from "react";
 import { Button, Card, Chip, Tabs, Tooltip } from "ufoo-ui";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
+import { SlideContent } from "@/components/SlideContent";
 import { useAuth } from "@/components/AuthProvider";
 import { useLanguage } from "@/lib/i18n";
+import { parseDeckMarkdown, renderSlides, slideThemeClasses } from "@/lib/markdown";
 
 type DeckSummary = {
   id: string;
+  markdown: string;
   title: string;
   slug: string;
   visibility: "private" | "public";
@@ -46,6 +49,67 @@ function parseDashboardTab(value: string | null): DashboardTab {
 function DashboardLoading() {
   const { t } = useLanguage();
   return <main className="p-6">{t.loading}</main>;
+}
+
+function DashboardSlideThumbnail({ markdown }: { markdown: string }) {
+  const settings = parseDeckMarkdown(markdown).settings;
+  const themeClasses = slideThemeClasses(settings.theme);
+  const slide = renderSlides(markdown)[0];
+
+  return (
+    <div className={`aspect-video overflow-hidden rounded-md border border-line ${themeClasses.slide}`}>
+      <div className="relative h-full">
+        {settings.header ? (
+          <div className="pointer-events-none absolute left-2 right-2 top-1 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+            {settings.header}
+          </div>
+        ) : null}
+        {slide ? (
+          <SlideContent
+            className="slide-content slide-thumbnail-content flex h-full flex-col justify-center px-2 py-3"
+            html={slide.html}
+          />
+        ) : (
+          <div className="grid h-full place-items-center text-xs text-stone-600" />
+        )}
+        {settings.footer ? (
+          <div className="pointer-events-none absolute bottom-1 left-2 right-2 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+            {settings.footer}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ViewIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 15H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
 }
 
 function DashboardContent() {
@@ -304,36 +368,51 @@ function DashboardContent() {
             {decks.map((deck) => (
               <Card className="border border-line bg-white/90 shadow-panel" key={deck.id}>
                 <Card.Content>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-black sm:text-xl">{deck.title}</h2>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-600">
-                      <Chip color={deck.visibility === "public" ? "accent" : "default"} size="sm" variant="soft">
-                        {deck.visibility === "public" ? t.public : t.private}
-                      </Chip>
-                      <span>{t.updated}: {new Date(deck.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}</span>
+                  <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)_auto] sm:items-center">
+                    <DashboardSlideThumbnail markdown={deck.markdown} />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-black sm:text-xl">{deck.title}</h2>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-600">
+                        <Chip color={deck.visibility === "public" ? "accent" : "default"} size="sm" variant="soft">
+                          {deck.visibility === "public" ? t.public : t.private}
+                        </Chip>
+                        <span>{t.updated}: {new Date(deck.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 sm:justify-end">
+                      {deck.visibility === "public" ? (
+                        <Tooltip>
+                          <Link href={`/view/${deck.slug}`} target="_blank">
+                            <Button isIconOnly aria-label={t.view} size="sm" variant="outline">
+                              <ViewIcon />
+                            </Button>
+                          </Link>
+                          <Tooltip.Content>{t.view}</Tooltip.Content>
+                        </Tooltip>
+                      ) : null}
+                      <Tooltip>
+                        <Button
+                          isIconOnly
+                          aria-label={t.delete}
+                          isDisabled={busy}
+                          size="sm"
+                          variant="outline"
+                          onPress={() => deleteDeck(deck.id)}
+                        >
+                          <DeleteIcon />
+                        </Button>
+                        <Tooltip.Content>{t.delete}</Tooltip.Content>
+                      </Tooltip>
+                      <Tooltip>
+                        <Link href={`/presentations/${deck.id}/edit`}>
+                          <Button isIconOnly aria-label={t.edit} size="sm" variant="primary">
+                            <EditIcon />
+                          </Button>
+                        </Link>
+                        <Tooltip.Content>{t.edit}</Tooltip.Content>
+                      </Tooltip>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                    {deck.visibility === "public" ? (
-                      <Link href={`/view/${deck.slug}`} target="_blank">
-                        <Button className="w-full sm:w-auto" size="sm" variant="outline">{t.view}</Button>
-                      </Link>
-                    ) : null}
-                    <Button
-                      className="w-full sm:w-auto"
-                      isDisabled={busy}
-                      size="sm"
-                      variant="outline"
-                      onPress={() => deleteDeck(deck.id)}
-                    >
-                      {t.delete}
-                    </Button>
-                    <Link href={`/presentations/${deck.id}/edit`}>
-                      <Button className="w-full sm:w-auto" size="sm" variant="primary">{t.edit}</Button>
-                    </Link>
-                  </div>
-                </div>
                 </Card.Content>
               </Card>
             ))}
@@ -425,29 +504,39 @@ function DashboardContent() {
             {sharedSlides.map((slide) => (
               <Card className="border border-line bg-white/90 shadow-panel" key={slide.id}>
                 <Card.Content>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-black sm:text-xl">{slide.title}</h2>
-                    <p className="mt-1 text-sm text-stone-600">
-                      {t.updated}: {new Date(slide.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}
-                    </p>
-                    <p className="mt-2 truncate text-sm text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ")}</p>
+                  <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)_auto] sm:items-center">
+                    <DashboardSlideThumbnail markdown={slide.markdown} />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-black sm:text-xl">{slide.title}</h2>
+                      <p className="mt-1 text-sm text-stone-600">
+                        {t.updated}: {new Date(slide.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : "en-US")}
+                      </p>
+                      <p className="mt-2 truncate text-sm text-stone-600">{slide.markdown.split("\n").slice(0, 2).join(" ")}</p>
+                    </div>
+                    <div className="flex items-center gap-1 sm:justify-end">
+                      <Tooltip>
+                        <Button
+                          isIconOnly
+                          aria-label={t.delete}
+                          isDisabled={busy}
+                          size="sm"
+                          variant="outline"
+                          onPress={() => deleteSharedSlide(slide.id)}
+                        >
+                          <DeleteIcon />
+                        </Button>
+                        <Tooltip.Content>{t.delete}</Tooltip.Content>
+                      </Tooltip>
+                      <Tooltip>
+                        <Link href={`/shared-slides/${slide.id}/edit`}>
+                          <Button isIconOnly aria-label={t.edit} size="sm" variant="primary">
+                            <EditIcon />
+                          </Button>
+                        </Link>
+                        <Tooltip.Content>{t.edit}</Tooltip.Content>
+                      </Tooltip>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                    <Button
-                      className="w-full sm:w-auto"
-                      isDisabled={busy}
-                      size="sm"
-                      variant="outline"
-                      onPress={() => deleteSharedSlide(slide.id)}
-                    >
-                      {t.delete}
-                    </Button>
-                    <Link href={`/shared-slides/${slide.id}/edit`}>
-                      <Button className="w-full sm:w-auto" size="sm" variant="primary">{t.edit}</Button>
-                    </Link>
-                  </div>
-                </div>
                 </Card.Content>
               </Card>
             ))}

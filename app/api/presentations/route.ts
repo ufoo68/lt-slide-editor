@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         id: true,
         title: true,
         slug: true,
+        markdown: true,
         presentationMinutes: true,
         visibility: true,
         createdAt: true,
