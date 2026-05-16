@@ -257,7 +257,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
               {t.dashboard}
             </Link>
             <input
-              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:mt-1 sm:w-full sm:text-2xl lg:min-w-[18rem]"
+              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:mt-1 sm:w-full sm:text-2xl lg:min-w-72"
               onChange={(event) => setTitle(event.target.value)}
               value={title}
             />
@@ -371,7 +371,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         </EditorShell>
       </main>
       {error || status || invalidSlideCount ? (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-[60] grid w-[calc(100vw-2rem)] max-w-sm gap-2">
+        <div className="pointer-events-none fixed bottom-4 right-4 z-60 grid w-[calc(100vw-2rem)] max-w-sm gap-2">
           {error ? (
             <p className="pointer-events-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 shadow-2xl">
               {error}

@@ -51,7 +51,7 @@ export function DeckEditorToolbar({
           {t.dashboard}
         </Link>
         <input
-          className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:text-xl lg:mt-1 lg:w-full lg:min-w-[18rem] lg:text-2xl"
+          className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:text-xl lg:mt-1 lg:w-full lg:min-w-72 lg:text-2xl"
           onChange={(event) => onTitleChange(event.target.value)}
           value={title}
         />
@@ -99,7 +99,7 @@ export function DeckEditorToolbar({
           >
             <span
               className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-[left] ${
-                visibility === "public" ? "left-[18px]" : "left-0.5"
+                visibility === "public" ? "left-4.5" : "left-0.5"
               }`}
             />
           </Switch.Control>

@@ -51,7 +51,7 @@ export function MediaLibraryDrawer({
             {t.close}
           </button>
         </div>
-        <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+        <label className="inline-flex cursor-pointer justify-center rounded-md bg-mint px-4 py-3 text-sm font-semibold text-white has-disabled:cursor-not-allowed has-disabled:opacity-50">
           {t.uploadMedia}
           <input
             accept="image/*,video/*"

@@ -148,7 +148,7 @@ export function slideThemeClasses(theme: SlideTheme) {
       return {
         chrome: "bg-emerald-100 text-emerald-950",
         meta: "text-emerald-700",
-        slide: "bg-[#ecfdf5] text-emerald-950",
+        slide: "bg-emerald-50 text-emerald-950",
       };
     default:
       return {

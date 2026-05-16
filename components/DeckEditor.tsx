@@ -744,7 +744,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   >
                     <span
                       className={`absolute top-0.5 block h-4 w-4 rounded-full bg-ufoo-dark shadow transition-[left] ${
-                        factCheckMode ? "left-[18px]" : "left-0.5"
+                        factCheckMode ? "left-4.5" : "left-0.5"
                       }`}
                     />
                   </Switch.Control>
@@ -782,7 +782,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   >
                     <span
                       className={`absolute top-0.5 block h-4 w-4 rounded-full bg-ufoo-dark shadow transition-[left] ${
-                        visibility === "public" ? "left-[18px]" : "left-0.5"
+                        visibility === "public" ? "left-4.5" : "left-0.5"
                       }`}
                     />
                   </Switch.Control>
@@ -978,7 +978,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         onRun={reviewWithAi}
       />
       {error || status ? (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-[60] grid w-[calc(100vw-2rem)] max-w-sm gap-2">
+        <div className="pointer-events-none fixed bottom-4 right-4 z-60 grid w-[calc(100vw-2rem)] max-w-sm gap-2">
           {error ? (
             <p className="pointer-events-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 shadow-2xl">
               {error}
