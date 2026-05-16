@@ -57,18 +57,6 @@ export function DeckEditorToolbar({
         />
       </div>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 lg:hidden">
-        {publicSlug ? (
-          <Link className="shrink-0 lg:col-span-2 xl:col-span-1" href={`/view/${publicSlug}`} target="_blank">
-            <Button aria-label={t.openPublicUrl} className="h-9 w-9 min-w-9 px-0 xl:h-10 xl:w-auto xl:px-3" size="sm" variant="outline">
-              <svg aria-hidden="true" className="h-4 w-4 xl:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M15 3h6v6" />
-                <path d="M10 14 21 3" />
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              </svg>
-              <span className="hidden xl:inline">{t.openPublicUrl}</span>
-            </Button>
-          </Link>
-        ) : null}
         <label className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-line bg-white px-1.5 text-sm font-semibold xl:h-10 lg:col-span-2 xl:col-span-1">
           <span className="sr-only">{t.presentationTime}</span>
           <svg aria-hidden="true" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">

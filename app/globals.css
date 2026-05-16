@@ -192,6 +192,14 @@ body {
   padding: 0;
 }
 
+.slide-content pre.mermaid.mermaid-error {
+  display: block;
+  overflow: auto;
+  padding: 1rem;
+  background: #111827;
+  color: #e5e7eb;
+}
+
 .slide-content .mermaid svg {
   max-height: 100%;
   max-width: 100%;
