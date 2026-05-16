@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { type DragEvent, type KeyboardEvent, type MouseEvent, type SyntheticEvent, type TouchEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   EditorShell,
@@ -17,12 +17,12 @@ import {
 } from "ufoo-ui";
 import { useAuth } from "@/components/AuthProvider";
 import { DeckEditorToolbar } from "@/components/DeckEditorToolbar";
-import { FactCheckAnswerPanel, FactCheckPopup, type FactCheckPopupPosition, type FactCheckReview } from "@/components/FactCheckUi";
 import { Header } from "@/components/Header";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { MediaLibraryDrawer, type MediaLibraryItem } from "@/components/MediaLibraryDrawer";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SharedSlidesDrawer, type LibrarySlide } from "@/components/SharedSlidesDrawer";
+import { SlideAgentPanel, type SlideAgentResult } from "@/components/SlideAgentUi";
 import { SlideContent } from "@/components/SlideContent";
 import { SlidePreview } from "@/components/SlidePreview";
 import { joinEditableSlides, parseDeckMarkdown, renderSlides, slideThemeClasses, slideThemes, splitEditableSlides, updateDeckSettings, type SlideDeckSettings, type SlideTheme } from "@/lib/markdown";
@@ -142,14 +142,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [factCheckMode, setFactCheckMode] = useState(false);
-  const [selectedText, setSelectedText] = useState("");
-  const [factCheckPopupPosition, setFactCheckPopupPosition] = useState<FactCheckPopupPosition | null>(null);
-  const [factCheckBackground, setFactCheckBackground] = useState("");
-  const [aiReview, setAiReview] = useState<FactCheckReview | null>(null);
-  const [aiReviewError, setAiReviewError] = useState<string | null>(null);
-  const [aiReviewLoading, setAiReviewLoading] = useState(false);
-  const [aiReviewMinimized, setAiReviewMinimized] = useState(false);
+  const [aiAgentOpen, setAiAgentOpen] = useState(false);
+  const [aiAgentPrompt, setAiAgentPrompt] = useState("");
+  const [aiAgentResult, setAiAgentResult] = useState<SlideAgentResult | null>(null);
+  const [aiAgentError, setAiAgentError] = useState<string | null>(null);
+  const [aiAgentLoading, setAiAgentLoading] = useState(false);
   const parsedMarkdown = useMemo(() => parseDeckMarkdown(markdown), [markdown]);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
@@ -173,7 +170,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     markdown !== savedState.markdown ||
     presentationMinutes !== savedState.presentationMinutes ||
     visibility !== savedState.visibility;
-  const factCheckText = selectedText.trim();
   const bothSidePanesOpen = slideNavigatorOpen && themeInspectorOpen;
 
   useEffect(() => {
@@ -312,102 +308,54 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     setStatus(t.insertedMediaCurrentPage(item.filename));
   }
 
-  function getPopupPosition(clientX: number, clientY: number) {
-    if (typeof window === "undefined") {
-      return { left: 12, top: 12 };
-    }
-
-    const width = Math.min(360, Math.max(280, window.innerWidth - 24));
-    const height = 260;
-    const maxLeft = Math.max(12, window.innerWidth - width - 12);
-    const maxTop = Math.max(12, window.innerHeight - height - 12);
-    const preferredLeft = clientX + 18;
-
-    return {
-      left: Math.min(Math.max(12, preferredLeft), maxLeft),
-      top: Math.min(Math.max(12, clientY - height / 2), maxTop),
-    };
-  }
-
-  function updateSelectedText(textarea: HTMLTextAreaElement, position?: FactCheckPopupPosition) {
-    const nextSelectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
-    setSelectedText(nextSelectedText);
-
-    if (!factCheckMode || !nextSelectedText.trim()) {
-      setFactCheckPopupPosition(null);
+  async function generateDeckWithAi() {
+    if (!aiAgentPrompt.trim()) {
+      setAiAgentError(t.aiAgentPromptRequired);
       return;
     }
 
-    if (position) {
-      setFactCheckPopupPosition(position);
-    }
-  }
-
-  function captureSelectedText(event: SyntheticEvent<HTMLTextAreaElement>) {
-    const textarea = event.currentTarget;
-    updateSelectedText(textarea);
-  }
-
-  function captureSelectedTextFromMouse(event: MouseEvent<HTMLTextAreaElement>) {
-    updateSelectedText(event.currentTarget, getPopupPosition(event.clientX, event.clientY));
-  }
-
-  function captureSelectedTextFromTouch(event: TouchEvent<HTMLTextAreaElement>) {
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-    updateSelectedText(event.currentTarget, getPopupPosition(touch.clientX, touch.clientY));
-  }
-
-  function captureSelectedTextFromKeyboard(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (typeof window === "undefined") {
-      updateSelectedText(event.currentTarget);
-      return;
-    }
-
-    const top = Math.min(96, window.innerHeight - 260);
-    updateSelectedText(event.currentTarget, getPopupPosition(window.innerWidth / 2, top));
-  }
-
-  async function reviewWithAi() {
-    if (!factCheckText) {
-      setAiReviewError(t.aiReviewSelectText);
-      return;
-    }
-
-    setAiReviewLoading(true);
-    setAiReviewError(null);
-    setAiReview(null);
-    setAiReviewMinimized(false);
-    setFactCheckPopupPosition(null);
+    setAiAgentLoading(true);
+    setAiAgentError(null);
+    setAiAgentResult(null);
     try {
       const idToken = await token();
-      const response = await fetch("/api/ai/review", {
+      const response = await fetch("/api/ai/deck-agent", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${idToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          background: factCheckBackground,
+          currentMarkdown: markdown,
           language,
-          markdown,
-          selectedText: factCheckText,
+          presentationMinutes,
+          prompt: aiAgentPrompt,
           title,
         }),
       });
-      const data = (await response.json()) as { review?: FactCheckReview; error?: string; message?: string };
-      if (!response.ok || !data.review) {
+      const data = (await response.json()) as { result?: SlideAgentResult; error?: string; message?: string };
+      if (!response.ok || !data.result) {
         if (response.status === 503) {
-          throw new Error(t.aiReviewNotConfigured);
+          throw new Error(t.aiAgentNotConfigured);
         }
-        throw new Error(data.message || data.error || t.aiReviewFailed);
+        throw new Error(data.message || data.error || t.aiAgentFailed);
       }
-      setAiReview(data.review);
+      setAiAgentResult(data.result);
     } catch (err) {
-      setAiReviewError(err instanceof Error ? err.message : t.aiReviewFailed);
+      setAiAgentError(err instanceof Error ? err.message : t.aiAgentFailed);
     } finally {
-      setAiReviewLoading(false);
+      setAiAgentLoading(false);
     }
+  }
+
+  function applyGeneratedDeck() {
+    if (!aiAgentResult?.markdown.trim()) return;
+
+    setMarkdown(aiAgentResult.markdown);
+    setActiveSlideIndex(0);
+    setFullMarkdownOpen(false);
+    setAiAgentOpen(false);
+    setStatus(t.appliedGeneratedMarkdown);
   }
 
   async function uploadAndInsertMedia(file: File | null) {
@@ -621,9 +569,12 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         <section className="grid min-h-0 flex-1 content-start gap-2 lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen((open) => !open)}>
                 {mobilePreviewOpen ? t.pageEdit : t.preview}
+              </Button>
+              <Button size="sm" variant="outline" onPress={() => setAiAgentOpen(true)}>
+                {t.aiAgent}
               </Button>
               <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(true)}>
                 {t.fullMarkdown}
@@ -665,11 +616,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <textarea
               className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
               onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
-              onKeyUp={captureSelectedTextFromKeyboard}
               onChange={(event) => updateActiveSlide(event.target.value)}
-              onMouseUp={captureSelectedTextFromMouse}
-              onSelect={captureSelectedText}
-              onTouchEnd={captureSelectedTextFromTouch}
               spellCheck={false}
               value={activeSlideMarkdown}
             />
@@ -738,31 +685,24 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   onClick={() => setPresentationPreviewOpen(true)}
                 />
               </ToolbarGroup>
-              <ToolbarGroup label={t.aiReview}>
-                <Switch
-                  className="flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-ufoo-panel-border px-2 text-sm font-semibold text-ufoo-ink"
-                  isSelected={factCheckMode}
-                  size="sm"
-                  onChange={(selected) => {
-                    setFactCheckMode(selected);
-                    if (!selected) {
-                      setFactCheckPopupPosition(null);
-                    }
-                  }}
-                >
-                  <Switch.Control
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      factCheckMode ? "bg-ufoo-neon" : "bg-ufoo-muted"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-0.5 block h-4 w-4 rounded-full bg-ufoo-dark shadow transition-[left] ${
-                        factCheckMode ? "left-4.5" : "left-0.5"
-                      }`}
-                    />
-                  </Switch.Control>
-                  {t.aiReviewMode}
-                </Switch>
+              <ToolbarGroup label={t.aiAgent}>
+                <ToolButton
+                  icon={
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M12 3v4" />
+                      <path d="M12 17v4" />
+                      <path d="M3 12h4" />
+                      <path d="M17 12h4" />
+                      <path d="m5.6 5.6 2.8 2.8" />
+                      <path d="m15.6 15.6 2.8 2.8" />
+                      <path d="m18.4 5.6-2.8 2.8" />
+                      <path d="m8.4 15.6-2.8 2.8" />
+                    </svg>
+                  }
+                  label={t.aiAgent}
+                  showLabel
+                  onClick={() => setAiAgentOpen(true)}
+                />
               </ToolbarGroup>
               <ToolbarGroup label={t.presentationTime}>
                 <label className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-ufoo-panel-border px-2 text-sm font-semibold text-ufoo-ink">
@@ -956,11 +896,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <textarea
               className="editor-markdown-textarea h-full min-h-0 resize-none rounded-lg border border-ufoo-panel-border p-4 font-mono text-sm leading-6 outline-ufoo-neon"
               onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
-              onKeyUp={captureSelectedTextFromKeyboard}
               onChange={(event) => updateActiveSlide(event.target.value)}
-              onMouseUp={captureSelectedTextFromMouse}
-              onSelect={captureSelectedText}
-              onTouchEnd={captureSelectedTextFromTouch}
               spellCheck={false}
               value={activeSlideMarkdown}
             />
@@ -980,16 +916,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           </div>
         </EditorShell>
       </main>
-      <FactCheckPopup
-        background={factCheckBackground}
-        factCheckText={factCheckText}
-        isLoading={aiReviewLoading}
-        position={factCheckPopupPosition}
-        onBackgroundChange={setFactCheckBackground}
-        onClose={() => setFactCheckPopupPosition(null)}
-        onPositionChange={setFactCheckPopupPosition}
-        onRun={reviewWithAi}
-      />
       {error || status ? (
         <div className="pointer-events-none fixed bottom-4 right-4 z-60 grid w-[calc(100vw-2rem)] max-w-sm gap-2">
           {error ? (
@@ -1004,13 +930,16 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           ) : null}
         </div>
       ) : null}
-      {aiReviewLoading || aiReviewError || aiReview ? (
-        <FactCheckAnswerPanel
-          error={aiReviewError}
-          isLoading={aiReviewLoading}
-          isMinimized={aiReviewMinimized}
-          review={aiReview}
-          onMinimizedChange={setAiReviewMinimized}
+      {aiAgentOpen ? (
+        <SlideAgentPanel
+          error={aiAgentError}
+          isLoading={aiAgentLoading}
+          prompt={aiAgentPrompt}
+          result={aiAgentResult}
+          onApply={applyGeneratedDeck}
+          onClose={() => setAiAgentOpen(false)}
+          onPromptChange={setAiAgentPrompt}
+          onRun={generateDeckWithAi}
         />
       ) : null}
       {libraryOpen ? (
@@ -1047,11 +976,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <textarea
               className="editor-markdown-textarea min-h-[min(42rem,calc(100dvh-10rem))] resize-none border-0 p-4 font-mono text-sm leading-6 outline-ufoo-neon"
               onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
-              onKeyUp={captureSelectedTextFromKeyboard}
               onChange={(event) => setMarkdown(event.target.value)}
-              onMouseUp={captureSelectedTextFromMouse}
-              onSelect={captureSelectedText}
-              onTouchEnd={captureSelectedTextFromTouch}
               spellCheck={false}
               value={markdown}
             />
