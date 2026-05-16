@@ -7,7 +7,6 @@ type SlideContentProps = {
   html: string;
 };
 
-let mermaidInitialized = false;
 let mermaidRenderCounter = 0;
 
 export function SlideContent({ className, html }: SlideContentProps) {
@@ -27,15 +26,25 @@ export function SlideContent({ className, html }: SlideContentProps) {
         return;
       }
 
-      if (!mermaidInitialized) {
-        mermaid.initialize({
-          securityLevel: "strict",
-          startOnLoad: false,
-          theme: "default",
-        });
-        mermaid.setParseErrorHandler(() => {});
-        mermaidInitialized = true;
-      }
+      mermaid.initialize({
+        flowchart: {
+          htmlLabels: false,
+          wrappingWidth: 120,
+        },
+        fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        fontSize: 12,
+        htmlLabels: false,
+        markdownAutoWrap: true,
+        securityLevel: "strict",
+        startOnLoad: false,
+        theme: "default",
+        themeVariables: {
+          fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          fontSize: "12px",
+        },
+        wrap: true,
+      });
+      mermaid.setParseErrorHandler(() => {});
 
       for (const node of mermaidNodes) {
         if (cancelled || !ref.current?.contains(node)) {

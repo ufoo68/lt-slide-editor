@@ -189,7 +189,9 @@ body {
   justify-content: center;
   background: transparent;
   color: currentColor;
+  overflow: hidden;
   padding: 0;
+  width: 100%;
 }
 
 .slide-content pre.mermaid.mermaid-error {
@@ -201,8 +203,36 @@ body {
 }
 
 .slide-content .mermaid svg {
+  display: block;
   max-height: 100%;
   max-width: 100%;
+}
+
+.slide-content .mermaid foreignObject {
+  overflow: hidden;
+}
+
+.slide-content .mermaid foreignObject > div,
+.slide-content .mermaid .cluster-label,
+.slide-content .mermaid .edgeLabel,
+.slide-content .mermaid .label,
+.slide-content .mermaid .label div,
+.slide-content .mermaid .nodeLabel {
+  box-sizing: border-box;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  white-space: normal;
+  word-break: normal;
+}
+
+.slide-thumbnail-content .mermaid foreignObject > div,
+.slide-thumbnail-content .mermaid .cluster-label,
+.slide-thumbnail-content .mermaid .edgeLabel,
+.slide-thumbnail-content .mermaid .label,
+.slide-thumbnail-content .mermaid .label div,
+.slide-thumbnail-content .mermaid .nodeLabel {
+  line-height: 1.1;
 }
 
 .slide-theme-dark .slide-content .mermaid svg [stroke],
