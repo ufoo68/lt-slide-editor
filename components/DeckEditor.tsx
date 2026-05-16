@@ -622,8 +622,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen(true)}>
-                {t.preview}
+              <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen((open) => !open)}>
+                {mobilePreviewOpen ? t.pageEdit : t.preview}
               </Button>
               <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(true)}>
                 {t.fullMarkdown}
@@ -650,17 +650,30 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               </svg>
             </Button>
           </div>
-          <textarea
-            className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
-            onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
-            onKeyUp={captureSelectedTextFromKeyboard}
-            onChange={(event) => updateActiveSlide(event.target.value)}
-            onMouseUp={captureSelectedTextFromMouse}
-            onSelect={captureSelectedText}
-            onTouchEnd={captureSelectedTextFromTouch}
-            spellCheck={false}
-            value={activeSlideMarkdown}
-          />
+          {mobilePreviewOpen ? (
+            <div className="grid min-h-[42dvh] place-items-center rounded-lg border border-line bg-paper p-2">
+              <SlidePreview
+                activeIndex={safeActiveSlideIndex}
+                className="w-full"
+                compact
+                hideControls
+                markdown={markdown}
+                onActiveIndexChange={setActiveSlideIndex}
+              />
+            </div>
+          ) : (
+            <textarea
+              className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
+              onKeyDown={(event) => insertTextareaTab(event, updateActiveSlide)}
+              onKeyUp={captureSelectedTextFromKeyboard}
+              onChange={(event) => updateActiveSlide(event.target.value)}
+              onMouseUp={captureSelectedTextFromMouse}
+              onSelect={captureSelectedText}
+              onTouchEnd={captureSelectedTextFromTouch}
+              spellCheck={false}
+              value={activeSlideMarkdown}
+            />
+          )}
         </section>
 
         <EditorShell
@@ -1046,25 +1059,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               <span>{slideCount} slides</span>
               <span>{hasUnsavedChanges ? t.unsavedChanges : t.saved}</span>
             </div>
-          </div>
-        </div>
-      ) : null}
-      {mobilePreviewOpen ? (
-        <div className="fixed inset-0 z-50 grid grid-rows-[auto_minmax(0,1fr)] bg-ink p-4 text-white lg:hidden">
-          <div className="flex items-center justify-between gap-3 pb-3">
-            <h2 className="min-w-0 truncate text-sm font-black uppercase tracking-normal text-ufoo-ink">{t.preview}</h2>
-            <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen(false)}>
-              {t.close}
-            </Button>
-          </div>
-          <div className="grid min-h-0 place-items-center">
-            <SlidePreview
-              activeIndex={safeActiveSlideIndex}
-              className="w-full max-w-5xl"
-              compact
-              markdown={markdown}
-              onActiveIndexChange={setActiveSlideIndex}
-            />
           </div>
         </div>
       ) : null}

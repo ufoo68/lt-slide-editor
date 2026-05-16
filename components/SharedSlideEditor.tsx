@@ -263,12 +263,23 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
             />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:hidden">
-            <Button aria-label={t.preview} className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3" variant="outline" onPress={() => setMobilePreviewOpen(true)}>
+            <Button
+              aria-label={mobilePreviewOpen ? t.pageEdit : t.preview}
+              className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3"
+              variant="outline"
+              onPress={() => setMobilePreviewOpen((open) => !open)}
+            >
               <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
-                <circle cx="12" cy="12" r="3" />
+                {mobilePreviewOpen ? (
+                  <path d="M12 20h9" />
+                ) : (
+                  <>
+                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </>
+                )}
               </svg>
-              <span className="hidden sm:inline">{t.preview}</span>
+              <span className="hidden sm:inline">{mobilePreviewOpen ? t.pageEdit : t.preview}</span>
             </Button>
             <Button aria-label={t.mediaTab} className="h-9 w-9 min-w-9 shrink-0 px-0 sm:h-10 sm:w-auto sm:px-3" variant="outline" onPress={() => setMediaOpen(true)}>
               <svg aria-hidden="true" className="h-4 w-4 sm:mr-1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
@@ -296,13 +307,19 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
         </div>
 
         <section className="grid min-h-0 flex-1 content-start gap-2 lg:hidden">
-          <textarea
-            className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
-            onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
-            onChange={(event) => setMarkdown(event.target.value)}
-            spellCheck={false}
-            value={markdown}
-          />
+          {mobilePreviewOpen ? (
+            <div className="grid min-h-[42dvh] place-items-center rounded-lg border border-line bg-paper p-2">
+              <SlidePreview className="w-full" compact hideControls markdown={markdown} />
+            </div>
+          ) : (
+            <textarea
+              className="editor-markdown-textarea min-h-[42dvh] resize-none rounded-lg border border-line p-3 font-mono text-sm leading-6 outline-mint"
+              onKeyDown={(event) => insertTextareaTab(event, setMarkdown)}
+              onChange={(event) => setMarkdown(event.target.value)}
+              spellCheck={false}
+              value={markdown}
+            />
+          )}
         </section>
 
         <EditorShell
@@ -400,19 +417,6 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
           onInsertMedia={insertMedia}
           onUpload={uploadAndInsertMedia}
         />
-      ) : null}
-      {mobilePreviewOpen ? (
-        <div className="fixed inset-0 z-50 grid grid-rows-[auto_minmax(0,1fr)] bg-ink p-4 text-white lg:hidden">
-          <div className="flex items-center justify-between gap-3 pb-3">
-            <h2 className="min-w-0 truncate text-sm font-black uppercase tracking-normal text-ufoo-ink">{t.preview}</h2>
-            <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen(false)}>
-              {t.close}
-            </Button>
-          </div>
-          <div className="grid min-h-0 place-items-center">
-            <SlidePreview className="w-full max-w-5xl" compact markdown={markdown} />
-          </div>
-        </div>
       ) : null}
     </>
   );
