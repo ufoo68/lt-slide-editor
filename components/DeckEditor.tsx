@@ -22,7 +22,7 @@ import { LoadingBlock } from "@/components/LoadingBlock";
 import { MediaLibraryDrawer, type MediaLibraryItem } from "@/components/MediaLibraryDrawer";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 import { SharedSlidesDrawer, type LibrarySlide } from "@/components/SharedSlidesDrawer";
-import { SlideAgentPanel, type SlideAgentResult } from "@/components/SlideAgentUi";
+import { SlideAgentPanel, type SlideAgentMessage, type SlideAgentResult } from "@/components/SlideAgentUi";
 import { SlideContent } from "@/components/SlideContent";
 import { SlidePreview } from "@/components/SlidePreview";
 import { joinEditableSlides, parseDeckMarkdown, renderSlides, slideThemeClasses, slideThemes, splitEditableSlides, updateDeckSettings, type SlideDeckSettings, type SlideTheme } from "@/lib/markdown";
@@ -48,6 +48,11 @@ type SavedDeckState = {
   presentationMinutes: number;
   title: string;
   visibility: "private" | "public";
+};
+
+type AiAgentUndoState = {
+  activeSlideIndex: number;
+  markdown: string;
 };
 
 const initialMarkdown = `---
@@ -126,9 +131,10 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [slideNavigatorOpen, setSlideNavigatorOpen] = useState(true);
+  const [aiAgentPaneOpen, setAiAgentPaneOpen] = useState(true);
   const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
   const [slideDropIndex, setSlideDropIndex] = useState<number | null>(null);
-  const [themeInspectorOpen, setThemeInspectorOpen] = useState(true);
+  const [themeSettingsOpen, setThemeSettingsOpen] = useState(false);
   const [deckLoading, setDeckLoading] = useState(mode === "edit");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
@@ -142,11 +148,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [aiAgentOpen, setAiAgentOpen] = useState(false);
   const [aiAgentPrompt, setAiAgentPrompt] = useState("");
-  const [aiAgentResult, setAiAgentResult] = useState<SlideAgentResult | null>(null);
+  const [aiAgentMessages, setAiAgentMessages] = useState<SlideAgentMessage[]>([]);
   const [aiAgentError, setAiAgentError] = useState<string | null>(null);
   const [aiAgentLoading, setAiAgentLoading] = useState(false);
+  const [aiAgentUndoState, setAiAgentUndoState] = useState<AiAgentUndoState | null>(null);
   const parsedMarkdown = useMemo(() => parseDeckMarkdown(markdown), [markdown]);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
@@ -170,7 +176,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     markdown !== savedState.markdown ||
     presentationMinutes !== savedState.presentationMinutes ||
     visibility !== savedState.visibility;
-  const bothSidePanesOpen = slideNavigatorOpen && themeInspectorOpen;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -309,14 +314,19 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   }
 
   async function generateDeckWithAi() {
-    if (!aiAgentPrompt.trim()) {
+    const prompt = aiAgentPrompt.trim();
+    if (!prompt) {
       setAiAgentError(t.aiAgentPromptRequired);
       return;
     }
 
     setAiAgentLoading(true);
     setAiAgentError(null);
-    setAiAgentResult(null);
+    setAiAgentMessages((messages) => [...messages, { role: "user", content: prompt }]);
+    const previousState = {
+      activeSlideIndex: safeActiveSlideIndex,
+      markdown,
+    };
     try {
       const idToken = await token();
       const response = await fetch("/api/ai/deck-agent", {
@@ -329,7 +339,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           currentMarkdown: markdown,
           language,
           presentationMinutes,
-          prompt: aiAgentPrompt,
+          prompt,
           title,
         }),
       });
@@ -340,22 +350,35 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         }
         throw new Error(data.message || data.error || t.aiAgentFailed);
       }
-      setAiAgentResult(data.result);
+      const result = data.result;
+      setAiAgentUndoState(previousState);
+      setMarkdown(result.markdown);
+      setActiveSlideIndex(0);
+      setFullMarkdownOpen(false);
+      setStatus(t.appliedGeneratedMarkdown);
+      setAiAgentMessages((messages) => [
+        ...messages,
+        {
+          role: "assistant",
+          content: result.notes ? `${t.appliedGeneratedMarkdown}\n\n${result.notes}` : t.appliedGeneratedMarkdown,
+        },
+      ]);
     } catch (err) {
-      setAiAgentError(err instanceof Error ? err.message : t.aiAgentFailed);
+      const message = err instanceof Error ? err.message : t.aiAgentFailed;
+      setAiAgentError(message);
+      setAiAgentMessages((messages) => [...messages, { role: "assistant", content: message }]);
     } finally {
       setAiAgentLoading(false);
     }
   }
 
-  function applyGeneratedDeck() {
-    if (!aiAgentResult?.markdown.trim()) return;
+  function undoGeneratedDeck() {
+    if (!aiAgentUndoState) return;
 
-    setMarkdown(aiAgentResult.markdown);
-    setActiveSlideIndex(0);
-    setFullMarkdownOpen(false);
-    setAiAgentOpen(false);
-    setStatus(t.appliedGeneratedMarkdown);
+    setMarkdown(aiAgentUndoState.markdown);
+    setActiveSlideIndex(aiAgentUndoState.activeSlideIndex);
+    setAiAgentUndoState(null);
+    setStatus(t.unsavedChanges);
   }
 
   async function uploadAndInsertMedia(file: File | null) {
@@ -573,8 +596,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
               <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen((open) => !open)}>
                 {mobilePreviewOpen ? t.pageEdit : t.preview}
               </Button>
-              <Button size="sm" variant="outline" onPress={() => setAiAgentOpen(true)}>
-                {t.aiAgent}
+              <Button size="sm" variant="outline" onPress={() => setThemeSettingsOpen(true)}>
+                {t.themeSettings}
               </Button>
               <Button size="sm" variant="outline" onPress={() => setFullMarkdownOpen(true)}>
                 {t.fullMarkdown}
@@ -625,8 +648,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
 
         <EditorShell
           className={`deck-editor-shell hidden min-h-0 flex-1 rounded-lg bg-ufoo-dark text-ufoo-ink lg:grid ${
-            bothSidePanesOpen ? "deck-editor-shell--both-panes" : ""
-          }`}
+            aiAgentPaneOpen ? "deck-editor-shell--ai-inspector" : ""
+          } ${slideNavigatorOpen && aiAgentPaneOpen ? "deck-editor-shell--both-panes" : ""}`}
           toolbar={
             <Toolbar className="justify-end">
               <ToolbarGroup label="Panels">
@@ -637,10 +660,10 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   onClick={() => setSlideNavigatorOpen((open) => !open)}
                 />
                 <ToolButton
-                  active={themeInspectorOpen}
+                  active={aiAgentPaneOpen}
                   icon="◨"
-                  label={t.themeSettings}
-                  onClick={() => setThemeInspectorOpen((open) => !open)}
+                  label={t.aiAgent}
+                  onClick={() => setAiAgentPaneOpen((open) => !open)}
                 />
               </ToolbarGroup>
               <ToolbarGroup label={t.mediaTab}>
@@ -685,23 +708,20 @@ export function DeckEditor({ mode }: DeckEditorProps) {
                   onClick={() => setPresentationPreviewOpen(true)}
                 />
               </ToolbarGroup>
-              <ToolbarGroup label={t.aiAgent}>
+              <ToolbarGroup label={t.themeSettings}>
                 <ToolButton
                   icon={
                     <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M12 3v4" />
-                      <path d="M12 17v4" />
-                      <path d="M3 12h4" />
-                      <path d="M17 12h4" />
-                      <path d="m5.6 5.6 2.8 2.8" />
-                      <path d="m15.6 15.6 2.8 2.8" />
-                      <path d="m18.4 5.6-2.8 2.8" />
-                      <path d="m8.4 15.6-2.8 2.8" />
+                      <path d="M12 3H5a2 2 0 0 0-2 2v7" />
+                      <path d="M12 21h7a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 5.5 12 12" />
+                      <path d="m14 5 5 5" />
+                      <path d="M5 19l4-1 9.5-9.5" />
                     </svg>
                   }
-                  label={t.aiAgent}
+                  label={t.themeSettings}
                   showLabel
-                  onClick={() => setAiAgentOpen(true)}
+                  onClick={() => setThemeSettingsOpen(true)}
                 />
               </ToolbarGroup>
               <ToolbarGroup label={t.presentationTime}>
@@ -761,122 +781,97 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           }
           sidebar={
             slideNavigatorOpen ? (
-            <div className="grid gap-2 p-3">
-              <div className="grid gap-2">
-                {slideNavigatorItems.map((item, index) => (
-                  <div key={index}>
-                    {slideDropIndex === index ? (
-                      <div className="mb-2 h-1 rounded-full bg-ufoo-neon shadow-[0_0_16px_rgba(0,243,255,0.45)]" />
-                    ) : null}
-                    <div
-                      aria-grabbed={draggedSlideIndex === index}
-                      className={`relative cursor-grab active:cursor-grabbing ${draggedSlideIndex === index ? "opacity-55" : ""}`}
-                      draggable
-                      onDragEnd={finishSlideDrag}
-                      onDragOver={(event) => updateSlideDropIndex(event, index)}
-                      onDragStart={(event) => startSlideDrag(event, index)}
-                      onDrop={dropSlide}
-                    >
-                      <SlideThumbnail
-                        meta={item.meta}
-                        selected={index === safeActiveSlideIndex}
-                        slideNumber={index + 1}
-                        title={item.title}
-                        onClick={() => selectSlide(index)}
-                      >
-                        <div className={`h-full overflow-hidden ${themeClasses.slide}`}>
-                          <div className="relative h-full">
-                            {parsedMarkdown.settings.header ? (
-                              <div className="pointer-events-none absolute left-2 right-2 top-1 z-10 truncate text-[0.42rem] font-semibold opacity-60">
-                                {parsedMarkdown.settings.header}
-                              </div>
-                            ) : null}
-                            <SlideContent
-                              className="slide-content slide-thumbnail-content flex h-full flex-col justify-center px-2 py-3"
-                              html={item.html}
-                            />
-                            {parsedMarkdown.settings.footer ? (
-                              <div className="pointer-events-none absolute bottom-1 left-2 right-2 z-10 truncate text-[0.42rem] font-semibold opacity-60">
-                                {parsedMarkdown.settings.footer}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </SlideThumbnail>
-                      {index === safeActiveSlideIndex ? (
-                        <button
-                          aria-label={t.deletePage}
-                          className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border border-red-300 bg-red-600 text-white shadow-lg transition-colors hover:border-red-300 hover:bg-red-500"
-                          onClick={deleteActiveSlide}
-                          type="button"
-                        >
-                          <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M3 6h18" />
-                            <path d="M8 6V4h8v2" />
-                            <path d="M19 6l-1 15H6L5 6" />
-                            <path d="M10 11v6" />
-                            <path d="M14 11v6" />
-                          </svg>
-                        </button>
+              <div className="grid gap-2 p-3">
+                <div className="grid gap-2">
+                  {slideNavigatorItems.map((item, index) => (
+                    <div key={index}>
+                      {slideDropIndex === index ? (
+                        <div className="mb-2 h-1 rounded-full bg-ufoo-neon shadow-[0_0_16px_rgba(0,243,255,0.45)]" />
                       ) : null}
+                      <div
+                        aria-grabbed={draggedSlideIndex === index}
+                        className={`relative cursor-grab active:cursor-grabbing ${draggedSlideIndex === index ? "opacity-55" : ""}`}
+                        draggable
+                        onDragEnd={finishSlideDrag}
+                        onDragOver={(event) => updateSlideDropIndex(event, index)}
+                        onDragStart={(event) => startSlideDrag(event, index)}
+                        onDrop={dropSlide}
+                      >
+                        <SlideThumbnail
+                          meta={item.meta}
+                          selected={index === safeActiveSlideIndex}
+                          slideNumber={index + 1}
+                          title={item.title}
+                          onClick={() => selectSlide(index)}
+                        >
+                          <div className={`h-full overflow-hidden ${themeClasses.slide}`}>
+                            <div className="relative h-full">
+                              {parsedMarkdown.settings.header ? (
+                                <div className="pointer-events-none absolute left-2 right-2 top-1 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+                                  {parsedMarkdown.settings.header}
+                                </div>
+                              ) : null}
+                              <SlideContent
+                                className="slide-content slide-thumbnail-content flex h-full flex-col justify-center px-2 py-3"
+                                html={item.html}
+                              />
+                              {parsedMarkdown.settings.footer ? (
+                                <div className="pointer-events-none absolute bottom-1 left-2 right-2 z-10 truncate text-[0.42rem] font-semibold opacity-60">
+                                  {parsedMarkdown.settings.footer}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </SlideThumbnail>
+                        {index === safeActiveSlideIndex ? (
+                          <button
+                            aria-label={t.deletePage}
+                            className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border border-red-300 bg-red-600 text-white shadow-lg transition-colors hover:border-red-300 hover:bg-red-500"
+                            onClick={deleteActiveSlide}
+                            type="button"
+                          >
+                            <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4h8v2" />
+                              <path d="M19 6l-1 15H6L5 6" />
+                              <path d="M10 11v6" />
+                              <path d="M14 11v6" />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {slideDropIndex === slides.length ? (
-                  <div className="h-1 rounded-full bg-ufoo-neon shadow-[0_0_16px_rgba(0,243,255,0.45)]" />
-                ) : null}
+                  ))}
+                  {slideDropIndex === slides.length ? (
+                    <div className="h-1 rounded-full bg-ufoo-neon shadow-[0_0_16px_rgba(0,243,255,0.45)]" />
+                  ) : null}
+                </div>
+                <button
+                  className="grid h-10 w-full place-items-center rounded-md border border-dashed border-ufoo-panel-border text-lg font-semibold text-ufoo-muted transition-colors hover:border-ufoo-neon hover:bg-ufoo-neon/10 hover:text-ufoo-neon"
+                  onClick={addNewSlideAtEnd}
+                  title={t.newPage}
+                  type="button"
+                >
+                  +
+                </button>
               </div>
-              <button
-                className="grid h-10 w-full place-items-center rounded-md border border-dashed border-ufoo-panel-border text-lg font-semibold text-ufoo-muted transition-colors hover:border-ufoo-neon hover:bg-ufoo-neon/10 hover:text-ufoo-neon"
-                onClick={addNewSlideAtEnd}
-                title={t.newPage}
-                type="button"
-              >
-                +
-              </button>
-            </div>
             ) : undefined
           }
           inspector={
-            themeInspectorOpen ? (
-            <InspectorPanel title={t.themeSettings}>
-              <InspectorSection title={t.slideTheme}>
-                <InspectorField label={t.slideTheme}>
-                  <select
-                    className="h-8 w-full rounded-md border border-ufoo-panel-border bg-[#0c0f15] px-2 text-sm text-white outline-none focus:border-ufoo-neon focus:ring-1 focus:ring-ufoo-neon"
-                    onChange={(event) => updateSlideSetting("theme", event.target.value as SlideTheme)}
-                    value={parsedMarkdown.settings.theme}
-                  >
-                    {slideThemes.map((theme) => (
-                      <option key={theme} value={theme}>
-                        {theme === "dark"
-                          ? t.slideThemeDark
-                          : theme === "light"
-                            ? t.slideThemeLight
-                            : t.slideThemeMint}
-                      </option>
-                    ))}
-                  </select>
-                </InspectorField>
-                <InspectorField label={t.slideHeader}>
-                  <InspectorInput
-                    onChange={(event) => updateSlideSetting("header", event.target.value)}
-                    value={parsedMarkdown.settings.header}
-                  />
-                </InspectorField>
-                <InspectorField label={t.slideFooter}>
-                  <InspectorInput
-                    onChange={(event) => updateSlideSetting("footer", event.target.value)}
-                    value={parsedMarkdown.settings.footer}
-                  />
-                </InspectorField>
-              </InspectorSection>
-              <InspectorSection title="Front matter">
-                <pre className="overflow-x-auto rounded-md border border-ufoo-panel-border bg-[#0c0f15] p-3 text-xs leading-5 text-slate-200">
-                  {`---\ntheme: ${parsedMarkdown.settings.theme}\nheader: ${JSON.stringify(parsedMarkdown.settings.header)}\nfooter: ${JSON.stringify(parsedMarkdown.settings.footer)}\n---`}
-                </pre>
-              </InspectorSection>
-            </InspectorPanel>
+            aiAgentPaneOpen ? (
+            <div className="h-full min-h-0 p-3">
+              <SlideAgentPanel
+                embedded
+                canUndo={Boolean(aiAgentUndoState)}
+                error={aiAgentError}
+                isLoading={aiAgentLoading}
+                messages={aiAgentMessages}
+                prompt={aiAgentPrompt}
+                onPromptChange={setAiAgentPrompt}
+                onRun={generateDeckWithAi}
+                onUndo={undoGeneratedDeck}
+              />
+            </div>
             ) : undefined
           }
           statusbar={
@@ -888,8 +883,8 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         >
           <div
             className={`grid h-full min-h-0 gap-3 ${
-              bothSidePanesOpen
-                ? "lg:grid-cols-[minmax(14rem,0.8fr)_minmax(18rem,1.2fr)] xl:grid-cols-[minmax(16rem,0.8fr)_minmax(24rem,1.2fr)] 2xl:grid-cols-[minmax(22rem,0.85fr)_minmax(32rem,1.35fr)]"
+              aiAgentPaneOpen
+                ? "lg:grid-cols-[minmax(14rem,0.78fr)_minmax(18rem,1.22fr)] xl:grid-cols-[minmax(16rem,0.8fr)_minmax(24rem,1.2fr)] 2xl:grid-cols-[minmax(20rem,0.82fr)_minmax(30rem,1.18fr)]"
                 : "lg:grid-cols-[minmax(18rem,0.78fr)_minmax(24rem,1.22fr)] xl:grid-cols-[minmax(24rem,0.85fr)_minmax(36rem,1.35fr)]"
             }`}
           >
@@ -952,17 +947,57 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           ) : null}
         </div>
       ) : null}
-      {aiAgentOpen ? (
-        <SlideAgentPanel
-          error={aiAgentError}
-          isLoading={aiAgentLoading}
-          prompt={aiAgentPrompt}
-          result={aiAgentResult}
-          onApply={applyGeneratedDeck}
-          onClose={() => setAiAgentOpen(false)}
-          onPromptChange={setAiAgentPrompt}
-          onRun={generateDeckWithAi}
-        />
+      {themeSettingsOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className="grid max-h-[calc(100dvh-2rem)] w-full max-w-md grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-ufoo-panel-border bg-ufoo-panel shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-ufoo-panel-border px-4 py-3">
+              <h2 className="text-sm font-black uppercase tracking-normal text-ufoo-ink">{t.themeSettings}</h2>
+              <Button size="sm" variant="outline" onPress={() => setThemeSettingsOpen(false)}>
+                {t.close}
+              </Button>
+            </div>
+            <div className="min-h-0 overflow-y-auto p-4">
+              <InspectorPanel title={t.themeSettings}>
+                <InspectorSection title={t.slideTheme}>
+                  <InspectorField label={t.slideTheme}>
+                    <select
+                      className="h-8 w-full rounded-md border border-ufoo-panel-border bg-[#0c0f15] px-2 text-sm text-white outline-none focus:border-ufoo-neon focus:ring-1 focus:ring-ufoo-neon"
+                      onChange={(event) => updateSlideSetting("theme", event.target.value as SlideTheme)}
+                      value={parsedMarkdown.settings.theme}
+                    >
+                      {slideThemes.map((theme) => (
+                        <option key={theme} value={theme}>
+                          {theme === "dark"
+                            ? t.slideThemeDark
+                            : theme === "light"
+                              ? t.slideThemeLight
+                              : t.slideThemeMint}
+                        </option>
+                      ))}
+                    </select>
+                  </InspectorField>
+                  <InspectorField label={t.slideHeader}>
+                    <InspectorInput
+                      onChange={(event) => updateSlideSetting("header", event.target.value)}
+                      value={parsedMarkdown.settings.header}
+                    />
+                  </InspectorField>
+                  <InspectorField label={t.slideFooter}>
+                    <InspectorInput
+                      onChange={(event) => updateSlideSetting("footer", event.target.value)}
+                      value={parsedMarkdown.settings.footer}
+                    />
+                  </InspectorField>
+                </InspectorSection>
+                <InspectorSection title="Front matter">
+                  <pre className="overflow-x-auto rounded-md border border-ufoo-panel-border bg-[#0c0f15] p-3 text-xs leading-5 text-slate-200">
+                    {`---\ntheme: ${parsedMarkdown.settings.theme}\nheader: ${JSON.stringify(parsedMarkdown.settings.header)}\nfooter: ${JSON.stringify(parsedMarkdown.settings.footer)}\n---`}
+                  </pre>
+                </InspectorSection>
+              </InspectorPanel>
+            </div>
+          </div>
+        </div>
       ) : null}
       {libraryOpen ? (
         <SharedSlidesDrawer

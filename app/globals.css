@@ -55,6 +55,14 @@ body {
   grid-template-columns: minmax(9.5rem, 180px) minmax(0, 1fr) minmax(11rem, 220px) !important;
 }
 
+.deck-editor-shell--ai-inspector > div:nth-child(2) {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem) !important;
+}
+
+.deck-editor-shell--ai-inspector.deck-editor-shell--both-panes > div:nth-child(2) {
+  grid-template-columns: minmax(9.5rem, 170px) minmax(0, 1fr) minmax(18rem, 22rem) !important;
+}
+
 .deck-editor-shell > div:first-child {
   padding-bottom: 0.25rem !important;
   padding-top: 0.25rem !important;
