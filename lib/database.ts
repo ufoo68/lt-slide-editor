@@ -24,13 +24,6 @@ export type Deck = {
   updatedAt: Date;
 };
 
-export type DeckVersion = {
-  id: string;
-  deckId: string;
-  markdown: string;
-  createdAt: Date;
-};
-
 export type SlideLibraryItem = {
   id: string;
   userId: string;
@@ -56,7 +49,6 @@ type FirestoreDate = Date | Timestamp | string | number | undefined;
 const collections = {
   users: "users",
   decks: "decks",
-  deckVersions: "deckVersions",
   slideLibraryItems: "slideLibraryItems",
   mediaLibraryItems: "mediaLibraryItems",
 } as const;
@@ -80,10 +72,6 @@ function asDate(value: FirestoreDate) {
 
 function byUpdatedAtDesc<T extends { updatedAt: Date }>(items: T[]) {
   return items.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-}
-
-function byCreatedAtDesc<T extends { createdAt: Date }>(items: T[]) {
-  return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 function docData<T extends object>(id: string, data: FirebaseFirestore.DocumentData | undefined) {
@@ -118,18 +106,6 @@ function mapDeck(id: string, data: FirebaseFirestore.DocumentData | undefined): 
     ...deck,
     createdAt: asDate(data?.createdAt),
     updatedAt: asDate(data?.updatedAt),
-  };
-}
-
-function mapDeckVersion(id: string, data: FirebaseFirestore.DocumentData | undefined): DeckVersion | null {
-  const version = docData<Omit<DeckVersion, "createdAt">>(id, data);
-  if (!version) {
-    return null;
-  }
-
-  return {
-    ...version,
-    createdAt: asDate(data?.createdAt),
   };
 }
 
@@ -200,25 +176,17 @@ export async function createDeck(input: {
   slug: string;
 }) {
   const deckRef = db().collection(collections.decks).doc();
-  const versionRef = db().collection(collections.deckVersions).doc();
   const now = new Date();
 
-  await db().runTransaction(async (transaction) => {
-    transaction.set(deckRef, {
-      userId: input.userId,
-      title: input.title,
-      slug: input.slug,
-      markdown: input.markdown,
-      presentationMinutes: input.presentationMinutes,
-      visibility: input.visibility,
-      createdAt: now,
-      updatedAt: now,
-    });
-    transaction.set(versionRef, {
-      deckId: deckRef.id,
-      markdown: input.markdown,
-      createdAt: now,
-    });
+  await deckRef.set({
+    userId: input.userId,
+    title: input.title,
+    slug: input.slug,
+    markdown: input.markdown,
+    presentationMinutes: input.presentationMinutes,
+    visibility: input.visibility,
+    createdAt: now,
+    updatedAt: now,
   });
 
   return mapDeck(deckRef.id, (await deckRef.get()).data()) as Deck;
@@ -250,22 +218,12 @@ export async function updateDeck(
   }
 
   const now = new Date();
-  await db().runTransaction(async (transaction) => {
-    transaction.update(deckRef, {
-      title: input.title,
-      markdown: input.markdown,
-      presentationMinutes: input.presentationMinutes,
-      visibility: input.visibility,
-      updatedAt: now,
-    });
-
-    if (current.markdown !== input.markdown) {
-      transaction.set(db().collection(collections.deckVersions).doc(), {
-        deckId: id,
-        markdown: input.markdown,
-        createdAt: now,
-      });
-    }
+  await deckRef.update({
+    title: input.title,
+    markdown: input.markdown,
+    presentationMinutes: input.presentationMinutes,
+    visibility: input.visibility,
+    updatedAt: now,
   });
 
   return mapDeck(deckRef.id, (await deckRef.get()).data()) as Deck;
@@ -277,22 +235,9 @@ export async function deleteDeck(id: string, userId: string) {
     return false;
   }
 
-  const versions = await db().collection(collections.deckVersions).where("deckId", "==", id).get();
-  const batch = db().batch();
-  batch.delete(db().collection(collections.decks).doc(id));
-  versions.docs.forEach((doc) => batch.delete(doc.ref));
-  await batch.commit();
+  await db().collection(collections.decks).doc(id).delete();
 
   return true;
-}
-
-export async function listDeckVersions(deckId: string) {
-  const snapshot = await db().collection(collections.deckVersions).where("deckId", "==", deckId).get();
-  const versions = snapshot.docs
-    .map((doc) => mapDeckVersion(doc.id, doc.data()))
-    .filter((version): version is DeckVersion => Boolean(version));
-
-  return byCreatedAtDesc(versions).slice(0, 20);
 }
 
 export async function listSlides(userId: string) {
