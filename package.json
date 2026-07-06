@@ -17,6 +17,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck",
+    "harness:decks": "node scripts/harness/validate-deck-fixtures.mjs",
     "local:up": "docker compose up -d --wait firebase minio minio-init",
     "local:down": "docker compose stop firebase minio",
     "local:destroy": "docker compose down",
