@@ -337,6 +337,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         },
         body: JSON.stringify({
           currentMarkdown: markdown,
+          deckId: deck?.id,
           language,
           presentationMinutes,
           prompt,

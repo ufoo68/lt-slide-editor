@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ApiError, GoogleGenAI } from "@google/genai";
+import { ApiError, GoogleGenAI, type Content } from "@google/genai";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
+import { getDeckAiHistory, saveDeckAiHistory } from "@/lib/database";
 
 const requestSchema = z.object({
   currentMarkdown: z.string().max(60000).optional().default(""),
+  deckId: z.string().trim().min(1).max(120).optional(),
   language: z.enum(["ja", "en"]),
   presentationMinutes: z.number().int().min(1).max(180),
   prompt: z.string().trim().min(1).max(8000),
@@ -17,6 +19,23 @@ const resultSchema = z.object({
 });
 
 type SlideAgentResult = z.infer<typeof resultSchema>;
+
+const resultJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  propertyOrdering: ["markdown", "notes"],
+  required: ["markdown", "notes"],
+  properties: {
+    markdown: {
+      type: "string",
+      description: "Complete replacement Full Markdown deck. Do not wrap it in a code fence.",
+    },
+    notes: {
+      type: "string",
+      description: "Short summary of what was generated or changed.",
+    },
+  },
+} satisfies Record<string, unknown>;
 
 function getAi() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -128,7 +147,7 @@ function normalizeResult(value: unknown) {
   } satisfies SlideAgentResult;
 }
 
-function agentPrompt(input: z.infer<typeof requestSchema>) {
+function agentSystemPrompt(input: z.infer<typeof requestSchema>) {
   const outputLanguage = input.language === "ja" ? "Japanese" : "English";
   const slideCountHint = Math.max(4, Math.min(14, Math.round(input.presentationMinutes * 1.2)));
 
@@ -148,14 +167,12 @@ The editor format:
 - Use normal Markdown: headings, bullets, code fences, images, and mermaid diagrams.
 - Mermaid diagrams must be concise and fit in a 16:9 slide.
 
-User request:
-${input.prompt}
-
-Current deck title:
-${input.title || "Untitled"}
-
-Current Full Markdown, if useful as context or revision target:
-${input.currentMarkdown || "(none)"}
+Conversation context:
+- This chat history is scoped to the current deck.
+- Use previous user requests and previous generated decks as memory for this deck.
+- Resolve follow-up references such as "the previous version", "that idea", "make it shorter", or "as discussed" from the conversation history.
+- Preserve durable user preferences, topic decisions, terminology, and narrative direction from earlier turns unless the latest user request changes them.
+- Treat the latest Current Full Markdown as the source of truth for the deck's current content if it conflicts with older generated markdown in the history.
 
 LT-specific requirements:
 - Create a practical ${slideCountHint}-slide structure unless the user asks otherwise.
@@ -167,30 +184,90 @@ LT-specific requirements:
 - Preserve useful existing front matter from the current deck when revising.
 - Return a full replacement Markdown deck, not a patch.
 - Do not wrap the Markdown in a code fence.
-
-Return JSON only with this shape:
-{
-  "markdown": "complete Full Markdown deck",
-  "notes": "short summary of what you generated or changed"
-}`;
+- Return only JSON matching the configured response schema.`;
 }
 
-async function generateDeck(input: z.infer<typeof requestSchema>) {
+function agentUserPrompt(input: z.infer<typeof requestSchema>) {
+  return `Latest user request:
+${input.prompt}
+
+Current deck title:
+${input.title || "Untitled"}
+
+Current Full Markdown, if useful as context or revision target:
+${input.currentMarkdown || "(none)"}`;
+}
+
+function isContent(value: unknown): value is Content {
+  if (!value || typeof value !== "object") return false;
+
+  const content = value as { parts?: unknown; role?: unknown };
+
+  return (
+    (content.role === undefined || content.role === "user" || content.role === "model") &&
+    (content.parts === undefined || Array.isArray(content.parts))
+  );
+}
+
+function restoreHistory(history: unknown[] | null) {
+  if (!history) return [];
+
+  return history.filter(isContent);
+}
+
+function contentTextLength(content: Content) {
+  return JSON.stringify(content).length;
+}
+
+function pruneHistory(history: Content[]) {
+  const maxItems = 12;
+  const maxCharacters = 180000;
+  const pruned: Content[] = [];
+  let totalCharacters = 0;
+
+  for (const content of [...history].reverse()) {
+    const nextCharacters = contentTextLength(content);
+    if (pruned.length >= maxItems || totalCharacters + nextCharacters > maxCharacters) {
+      break;
+    }
+
+    pruned.push(content);
+    totalCharacters += nextCharacters;
+  }
+
+  const ordered = pruned.reverse();
+  const firstUserIndex = ordered.findIndex((content) => content.role === "user" || !content.role);
+
+  return firstUserIndex > 0 ? ordered.slice(firstUserIndex) : ordered;
+}
+
+async function generateDeck(input: z.infer<typeof requestSchema>, userId: string) {
   const ai = getAi();
   const models = getModels();
+  const deckHistory = input.deckId ? await getDeckAiHistory(input.deckId, userId) : [];
+  if (deckHistory === null) {
+    throw new Error("Deck not found");
+  }
+
+  const savedHistory = restoreHistory(deckHistory);
   let lastError: unknown;
 
   for (const model of models) {
     try {
+      const chat = ai.chats.create({
+        model,
+        history: savedHistory,
+        config: {
+          maxOutputTokens: 12000,
+          responseMimeType: "application/json",
+          responseJsonSchema: resultJsonSchema,
+          systemInstruction: agentSystemPrompt(input),
+          temperature: 0.75,
+        },
+      });
       const response = await generateWithRetry(() =>
-        ai.models.generateContent({
-          model,
-          contents: agentPrompt(input),
-          config: {
-            maxOutputTokens: 12000,
-            responseMimeType: "application/json",
-            temperature: 0.75,
-          },
+        chat.sendMessage({
+          message: agentUserPrompt(input),
         }),
       );
 
@@ -200,7 +277,13 @@ async function generateDeck(input: z.infer<typeof requestSchema>) {
         throw new Error(`Gemini returned empty response. model=${model}`);
       }
 
-      return normalizeResult(JSON.parse(extractJson(text)));
+      const result = normalizeResult(JSON.parse(extractJson(text)));
+
+      if (input.deckId) {
+        await saveDeckAiHistory(input.deckId, userId, pruneHistory(chat.getHistory(true)));
+      }
+
+      return result;
     } catch (error) {
       lastError = error;
 
@@ -219,7 +302,7 @@ async function generateDeck(input: z.infer<typeof requestSchema>) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
 
     const input = requestSchema.parse(await request.json());
 
@@ -230,7 +313,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await generateDeck(input);
+    const result = await generateDeck(input, user.id);
 
     return NextResponse.json({ result });
   } catch (error) {
@@ -279,6 +362,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "GEMINI_API_KEY is not configured" },
         { status: 503 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "Deck not found"
+    ) {
+      return NextResponse.json(
+        { error: "Deck not found" },
+        { status: 404 },
       );
     }
 

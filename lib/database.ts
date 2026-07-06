@@ -44,11 +44,17 @@ export type MediaLibraryItem = {
   updatedAt: Date;
 };
 
+export type AiChatHistoryContent = {
+  role?: string;
+  parts?: unknown[];
+};
+
 type FirestoreDate = Date | Timestamp | string | number | undefined;
 
 const collections = {
   users: "users",
   decks: "decks",
+  deckAiConversations: "aiConversations",
   slideLibraryItems: "slideLibraryItems",
   mediaLibraryItems: "mediaLibraryItems",
 } as const;
@@ -229,12 +235,51 @@ export async function updateDeck(
   return mapDeck(deckRef.id, (await deckRef.get()).data()) as Deck;
 }
 
+function deckAiConversationRef(deckId: string) {
+  return db()
+    .collection(collections.decks)
+    .doc(deckId)
+    .collection(collections.deckAiConversations)
+    .doc("deckAgent");
+}
+
+export async function getDeckAiHistory(deckId: string, userId: string) {
+  const deck = await getDeckForUser(deckId, userId);
+  if (!deck) {
+    return null;
+  }
+
+  const snapshot = await deckAiConversationRef(deckId).get();
+  const history = snapshot.data()?.history;
+
+  return Array.isArray(history) ? (history as AiChatHistoryContent[]) : [];
+}
+
+export async function saveDeckAiHistory(deckId: string, userId: string, history: AiChatHistoryContent[]) {
+  const deck = await getDeckForUser(deckId, userId);
+  if (!deck) {
+    return false;
+  }
+
+  const now = new Date();
+  await deckAiConversationRef(deckId).set(
+    {
+      history,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+
+  return true;
+}
+
 export async function deleteDeck(id: string, userId: string) {
   const deck = await getDeckForUser(id, userId);
   if (!deck) {
     return false;
   }
 
+  await deckAiConversationRef(id).delete();
   await db().collection(collections.decks).doc(id).delete();
 
   return true;
