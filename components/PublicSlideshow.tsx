@@ -158,22 +158,22 @@ export function PublicSlideshow({
   }
 
   return (
-    <main className={`h-screen overflow-hidden ${themeClasses.chrome}`}>
+    <main className={`h-[100dvh] overflow-hidden ${themeClasses.chrome}`}>
       <div className="flex h-full min-h-0 flex-col">
-        <header className="shrink-0 flex min-h-16 flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <header className="shrink-0 flex min-h-12 flex-col gap-2 border-b border-white/10 px-3 py-2 sm:min-h-16 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-4 sm:py-3">
           <div className="min-w-0 self-stretch sm:self-auto">
             <h1 className="truncate text-lg font-black">{title}</h1>
             <p className={`text-xs font-semibold ${themeClasses.meta}`}>{t.updatedLabel} {updatedAt}</p>
           </div>
           <div className="grid grid-cols-4 items-center gap-2 sm:flex">
             <div
-              className={`col-span-4 flex h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm font-bold sm:col-span-1 sm:justify-start ${
+              className={`col-span-4 flex h-8 items-center justify-between gap-2 rounded-md border px-2 text-xs font-bold sm:col-span-1 sm:h-10 sm:justify-start sm:px-3 sm:text-sm ${
                 displayedRemainingSeconds === 0 ? "border-coral bg-coral text-white" : "border-white/20"
               }`}
             >
               <span className="tabular-nums">{formatRemainingTime(displayedRemainingSeconds)}</span>
               <button
-                className="rounded bg-white px-2 py-1 text-xs font-black text-ink"
+                className="rounded bg-white px-2 py-0.5 text-xs font-black text-ink sm:py-1"
                 onClick={timerRunning ? resetTimer : startTimer}
                 type="button"
               >
@@ -181,25 +181,25 @@ export function PublicSlideshow({
               </button>
             </div>
             {onClose ? (
-              <button className="h-10 rounded-md border border-white/20 px-3 text-sm font-bold" onClick={close} type="button">
+              <button className="h-8 rounded-md border border-white/20 px-2 text-xs font-bold sm:h-10 sm:px-3 sm:text-sm" onClick={close} type="button">
                 {t.close}
               </button>
             ) : null}
             <button
               aria-label={t.previousSlide}
-              className="h-10 min-w-10 rounded-md border border-white/20 px-3 text-sm font-bold disabled:opacity-35"
+              className="h-8 min-w-8 rounded-md border border-white/20 px-2 text-xs font-bold disabled:opacity-35 sm:h-10 sm:min-w-10 sm:px-3 sm:text-sm"
               disabled={active === 0}
               onClick={goPrevious}
               type="button"
             >
               ←
             </button>
-            <span className="min-w-12 text-center text-sm font-bold sm:min-w-16">
+            <span className="min-w-10 text-center text-xs font-bold sm:min-w-16 sm:text-sm">
               {active + 1} / {slides.length}
             </span>
             <button
               aria-label={t.nextSlide}
-              className="h-10 min-w-10 rounded-md border border-white/20 px-3 text-sm font-bold disabled:opacity-35"
+              className="h-8 min-w-8 rounded-md border border-white/20 px-2 text-xs font-bold disabled:opacity-35 sm:h-10 sm:min-w-10 sm:px-3 sm:text-sm"
               disabled={active >= slides.length - 1}
               onClick={goNext}
               type="button"
@@ -220,9 +220,9 @@ export function PublicSlideshow({
           <div className="h-full bg-coral transition-all" style={{ width: `${progress}%` }} />
         </div>
 
-        <section className="flex min-h-0 flex-1 items-center justify-center px-4 py-4 sm:px-6 lg:px-10">
-          <div className="w-full max-w-[calc((100dvh-11rem)*16/9)]">
-            <div className={`aspect-video overflow-hidden rounded-lg shadow-panel ${themeClasses.slide}`}>
+        <section className="public-slide-stage flex min-h-0 flex-1 items-center justify-center px-2 py-2 sm:px-6 sm:py-4 lg:px-10">
+          <div className="public-slide-frame">
+            <div className={`aspect-[3/4] overflow-hidden rounded-lg shadow-panel sm:aspect-video ${themeClasses.slide}`}>
               <div className="relative h-full">
                 {settings.header ? (
                   <div className="pointer-events-none absolute left-6 right-6 top-4 z-10 truncate text-sm font-semibold opacity-60 sm:left-10 sm:right-10 lg:left-14 lg:right-14">
@@ -230,7 +230,7 @@ export function PublicSlideshow({
                   </div>
                 ) : null}
                 <SlideContent
-                  className="slide-content flex h-full flex-col justify-center p-6 pt-12 pb-12 sm:p-10 sm:pt-14 sm:pb-14 lg:p-14 lg:pt-16 lg:pb-16"
+                  className="slide-content public-slide-content flex h-full flex-col justify-center p-2 pt-5 pb-5 sm:p-10 sm:pt-14 sm:pb-14 lg:p-14 lg:pt-16 lg:pb-16"
                   html={current.html}
                   key={`${current.index}-${current.html}`}
                 />
@@ -244,7 +244,7 @@ export function PublicSlideshow({
           </div>
         </section>
 
-        <footer className="flex min-h-10 shrink-0 items-center justify-center px-4 pb-3 text-xs font-semibold text-white/45">
+        <footer className="hidden min-h-10 shrink-0 items-center justify-center px-4 pb-3 text-xs font-semibold text-white/45 sm:flex">
           <span className="sm:hidden">← / → / Space</span>
           <span className="hidden sm:inline">← / → / Space / F</span>
         </footer>

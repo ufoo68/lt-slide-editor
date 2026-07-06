@@ -92,6 +92,112 @@ body {
   width: min(100%, calc(100cqh * 16 / 9));
 }
 
+.public-slide-stage {
+  container-type: size;
+}
+
+.public-slide-frame {
+  max-height: 100%;
+  width: min(100cqw, calc(100cqh * 3 / 4));
+}
+
+.public-slide-content {
+  container-type: size;
+  overflow: hidden;
+}
+
+.public-slide-content h1 {
+  font-size: clamp(0.9rem, 6.8cqh, 1.28rem);
+  margin-bottom: clamp(0.24rem, 2cqh, 0.5rem);
+}
+
+.public-slide-content h2 {
+  font-size: clamp(0.8rem, 5.6cqh, 1.08rem);
+  margin-bottom: clamp(0.18rem, 1.6cqh, 0.4rem);
+}
+
+.public-slide-content p,
+.public-slide-content li {
+  font-size: clamp(0.64rem, 3.8cqh, 0.86rem);
+  line-height: 1.35;
+}
+
+.public-slide-content ul,
+.public-slide-content ol {
+  margin: clamp(0.1rem, 1.3cqh, 0.28rem) 0;
+  padding-left: clamp(0.7rem, 5cqh, 1rem);
+}
+
+.public-slide-content pre {
+  font-size: clamp(0.5rem, 2.8cqh, 0.64rem);
+  line-height: 1.28;
+  padding: clamp(0.18rem, 2cqh, 0.42rem);
+}
+
+@media (min-width: 640px) {
+  .public-slide-frame {
+    width: min(100cqw, calc(100cqh * 16 / 9));
+  }
+
+  .public-slide-content h1 {
+    font-size: 1.85rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .public-slide-content h2 {
+    font-size: 1.55rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .public-slide-content p,
+  .public-slide-content li {
+    font-size: 1.18rem;
+    line-height: 1.5;
+  }
+
+  .public-slide-content ul,
+  .public-slide-content ol {
+    margin: 0.75rem 0;
+    padding-left: 1.35rem;
+  }
+
+  .public-slide-content pre {
+    font-size: 0.92rem;
+    line-height: 1.48;
+    padding: 0.8rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .public-slide-content h1 {
+    font-size: 2.55rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .public-slide-content h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .public-slide-content p,
+  .public-slide-content li {
+    font-size: 1.55rem;
+    line-height: 1.55;
+  }
+
+  .public-slide-content ul,
+  .public-slide-content ol {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .public-slide-content pre {
+    font-size: 1.08rem;
+    line-height: 1.55;
+    padding: 1rem;
+  }
+}
+
 @layer utilities {
   .bg-white {
     background-color: #15171d;
