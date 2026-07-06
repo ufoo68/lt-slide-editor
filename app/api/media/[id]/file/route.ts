@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getMedia } from "@/lib/database";
 import { readObject } from "@/lib/storage";
 
 function apiError(error: unknown) {
@@ -10,10 +10,7 @@ function apiError(error: unknown) {
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const params = await context.params;
-    const media = await prisma.mediaLibraryItem.findUnique({
-      where: { id: params.id },
-      select: { contentType: true, storagePath: true },
-    });
+    const media = await getMedia(params.id);
 
     if (!media) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

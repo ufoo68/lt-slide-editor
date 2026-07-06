@@ -84,7 +84,7 @@ console.log(message);
 \`\`\`mermaid
 flowchart LR
   Browser[Browser] --> App[Next.js App]
-  App --> DB[(PostgreSQL)]
+  App --> DB[(Cloud Firestore)]
   App --> Auth[Firebase Auth]
 \`\`\`
 `;

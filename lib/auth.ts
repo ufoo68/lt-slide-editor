@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAdminAuth } from "@/lib/firebase-admin";
-import { prisma } from "@/lib/prisma";
+import { upsertUser } from "@/lib/database";
 
 export async function requireUser(request: NextRequest) {
   const header = request.headers.get("authorization");
@@ -14,13 +14,5 @@ export async function requireUser(request: NextRequest) {
   const email = decoded.email ?? "";
   const name = decoded.name ?? null;
 
-  return prisma.user.upsert({
-    where: { firebaseUid: decoded.uid },
-    update: { email, name },
-    create: {
-      firebaseUid: decoded.uid,
-      email,
-      name,
-    },
-  });
+  return upsertUser({ firebaseUid: decoded.uid, email, name });
 }

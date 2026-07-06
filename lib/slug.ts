@@ -1,5 +1,5 @@
 import slugify from "slugify";
-import { prisma } from "@/lib/prisma";
+import { deckSlugExists } from "@/lib/database";
 
 export async function uniqueDeckSlug(title: string) {
   const base =
@@ -8,7 +8,7 @@ export async function uniqueDeckSlug(title: string) {
   let slug = base;
   let suffix = 2;
 
-  while (await prisma.deck.findUnique({ where: { slug }, select: { id: true } })) {
+  while (await deckSlugExists(slug)) {
     slug = `${base}-${suffix}`;
     suffix += 1;
   }

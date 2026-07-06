@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { deleteMedia, getMediaForUser } from "@/lib/database";
 import { deleteObject } from "@/lib/storage";
 
 function apiError(error: unknown) {
@@ -15,19 +15,14 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   try {
     const params = await context.params;
     const user = await requireUser(request);
-    const media = await prisma.mediaLibraryItem.findFirst({
-      where: { id: params.id, userId: user.id },
-      select: { id: true, storagePath: true },
-    });
+    const media = await getMediaForUser(params.id, user.id);
 
     if (!media) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     await deleteObject(media.storagePath);
-    await prisma.mediaLibraryItem.delete({
-      where: { id: media.id },
-    });
+    await deleteMedia(params.id, user.id);
 
     return new Response(null, { status: 204 });
   } catch (error) {

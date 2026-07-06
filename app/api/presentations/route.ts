@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { createDeck, listDecks } from "@/lib/database";
 import { uniqueDeckSlug } from "@/lib/slug";
 
 const createDeckSchema = z.object({
@@ -22,20 +22,7 @@ function apiError(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request);
-    const decks = await prisma.deck.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        markdown: true,
-        presentationMinutes: true,
-        visibility: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const decks = await listDecks(user.id);
     return NextResponse.json({ decks });
   } catch (error) {
     return apiError(error);
@@ -48,27 +35,13 @@ export async function POST(request: NextRequest) {
     const input = createDeckSchema.parse(await request.json());
     const slug = await uniqueDeckSlug(input.title);
 
-    const deck = await prisma.deck.create({
-      data: {
-        userId: user.id,
-        title: input.title,
-        markdown: input.markdown,
-        presentationMinutes: input.presentationMinutes,
-        visibility: input.visibility,
-        slug,
-        versions: {
-          create: { markdown: input.markdown },
-        },
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        markdown: true,
-        presentationMinutes: true,
-        visibility: true,
-        updatedAt: true,
-      },
+    const deck = await createDeck({
+      userId: user.id,
+      title: input.title,
+      markdown: input.markdown,
+      presentationMinutes: input.presentationMinutes,
+      visibility: input.visibility,
+      slug,
     });
 
     return NextResponse.json({ deck }, { status: 201 });

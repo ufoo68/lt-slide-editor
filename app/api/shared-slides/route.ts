@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
+import { createSlide, listSlides } from "@/lib/database";
 import { splitSlides } from "@/lib/markdown";
-import { prisma } from "@/lib/prisma";
 
 const createSlideSchema = z.object({
   title: z.string().trim().min(1).max(80),
@@ -27,16 +27,7 @@ function apiError(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request);
-    const slides = await prisma.slideLibraryItem.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        markdown: true,
-        updatedAt: true,
-      },
-    });
+    const slides = await listSlides(user.id);
 
     return NextResponse.json({ slides });
   } catch (error) {
@@ -49,19 +40,7 @@ export async function POST(request: NextRequest) {
     const user = await requireUser(request);
     const input = createSlideSchema.parse(await request.json());
 
-    const slide = await prisma.slideLibraryItem.create({
-      data: {
-        userId: user.id,
-        title: input.title,
-        markdown: input.markdown,
-      },
-      select: {
-        id: true,
-        title: true,
-        markdown: true,
-        updatedAt: true,
-      },
-    });
+    const slide = await createSlide({ userId: user.id, title: input.title, markdown: input.markdown });
 
     return NextResponse.json({ slide }, { status: 201 });
   } catch (error) {

@@ -1,14 +1,11 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { getPublicDeckBySlug } from "@/lib/database";
 import { parseDeckMarkdown, renderSlides } from "@/lib/markdown";
 import { PublicSlideshow } from "@/components/PublicSlideshow";
 
 export default async function PublicDeckPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const deck = await prisma.deck.findFirst({
-    where: { slug, visibility: "public" },
-    select: { title: true, markdown: true, presentationMinutes: true, updatedAt: true },
-  });
+  const deck = await getPublicDeckBySlug(slug);
 
   if (!deck) {
     notFound();

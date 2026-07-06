@@ -1,32 +1,22 @@
 name: lt-slide-editor
 
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: lt_slide_editor
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d lt_slide_editor"]
-      interval: 2s
-      timeout: 5s
-      retries: 30
-
-  firebase-auth:
+  firebase:
     build:
       context: .
       dockerfile: Dockerfile.firebase
     ports:
       - "4000:4000"
+      - "8080:8080"
       - "9099:9099"
     volumes:
       - ./firebase.json:/workspace/firebase.json:ro
-      - firebase-auth-data:/workspace/firebase-data
+      - firebase-data:/workspace/firebase-data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000 >/dev/null"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
   minio:
     image: minio/minio:latest
@@ -51,9 +41,7 @@ services:
       "
 
 volumes:
-  postgres-data:
-    name: lt-slide-editor_postgres-data
-  firebase-auth-data:
-    name: lt-slide-editor_firebase-auth-data
+  firebase-data:
+    name: lt-slide-editor_firebase-data
   minio-data:
     name: lt-slide-editor_minio-data

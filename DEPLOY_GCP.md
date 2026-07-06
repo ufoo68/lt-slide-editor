@@ -1,15 +1,15 @@
 # GCP Deploy
 
-Cloud Run + Supabase Postgres + Cloud Storageにデプロイする手順です。
+Cloud Run + Cloud Firestore + Cloud Storage にデプロイする手順です。
 
 ## 前提
 
 - Google Cloud CLI (`gcloud`) が使えること
-- Firebase AuthenticationのWebアプリ設定があること
-- SupabaseプロジェクトとPostgres接続文字列があること
-- Cloud Storageの画像保存用バケットがあること
-- Artifact RegistryのDockerリポジトリがあること
-- Gemini APIキーがあること
+- Firebase Authentication の Web アプリ設定があること
+- Cloud Firestore のデータベースがあること
+- Cloud Storage のメディア保存用バケットがあること
+- Artifact Registry の Docker リポジトリがあること
+- Gemini API キーがあること
 
 ## 変数例
 
@@ -19,37 +19,35 @@ $REGION = "asia-northeast1"
 $SERVICE = "lt-slide-editor"
 $REPOSITORY = "apps"
 $IMAGE = "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${SERVICE}:latest"
-$GCS_BUCKET_NAME = "lt-slide-editor-images"
+$GCS_BUCKET_NAME = "lt-slide-editor-media"
 $GEMINI_MODEL = "gemini-2.5-flash"
+$NEXT_PUBLIC_FIREBASE_API_KEY = "..."
 $NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "$PROJECT_ID.firebaseapp.com"
-# Firebase Console > Project settings > General > Web app config の storageBucket を入れる
-$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = "lt-slide-editor.firebasestorage.app"
+$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = "$PROJECT_ID.appspot.com"
 ```
 
-PowerShellでは `$SERVICE:latest` が変数スコープのように解釈されるため、Docker image tagを組み立てる時は `${SERVICE}:latest` の形にします。
+PowerShell では `$SERVICE:latest` が変数スコープのように解釈されるため、Docker image tag は `${SERVICE}:latest` の形で組み立てます。
 
-`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` はFirebase client初期化用の値です。画像保存先の `GCS_BUCKET_NAME` とは別で、Firebase ConsoleのWeb app configに表示される `storageBucket` をそのまま使います。プロジェクトによっては `PROJECT_ID.appspot.com` の形式の場合もあります。
-
-Supabaseの `DATABASE_URL` は、SupabaseのConnection Pooler用URLを使います。Cloud Runのようなサーバーレス環境ではpooler経由にして、接続数を絞るのがおすすめです。
-
-```text
-postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
-```
-
-Prisma migration用には、direct/session側の接続文字列を `DIRECT_URL` として別に設定します。
-
-```text
-postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
-```
+`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` は Firebase client 初期化用の値です。メディア保存先の `GCS_BUCKET_NAME` とは別で、Firebase Console の Web app config に表示される `storageBucket` をそのまま使います。プロジェクトによっては `PROJECT_ID.firebasestorage.app` の形式の場合もあります。
 
 ## 初回だけ
 
 ```powershell
 gcloud config set project $PROJECT_ID
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
+gcloud services enable `
+  run.googleapis.com `
+  cloudbuild.googleapis.com `
+  artifactregistry.googleapis.com `
+  secretmanager.googleapis.com `
+  firestore.googleapis.com `
+  storage.googleapis.com
 
 gcloud artifacts repositories create $REPOSITORY `
   --repository-format=docker `
+  --location=$REGION
+
+gcloud firestore databases create `
+  --database="(default)" `
   --location=$REGION
 
 gcloud storage buckets create "gs://$GCS_BUCKET_NAME" `
@@ -58,51 +56,41 @@ gcloud storage buckets create "gs://$GCS_BUCKET_NAME" `
   --uniform-bucket-level-access
 ```
 
-Secret ManagerにDB接続文字列を入れます。
+すでに Firestore の default database がある場合、`gcloud firestore databases create` は不要です。Firebase Console から Cloud Firestore を有効化しても構いません。
+
+Secret Manager には Gemini API キーだけを入れます。Firestore は Cloud Run の Application Default Credentials でアクセスするため、DB 接続文字列は不要です。
 
 ```powershell
-$DATABASE_URL = "postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
-$DATABASE_URL | gcloud secrets create DATABASE_URL --data-file=-
-
-$DIRECT_URL = "postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres"
-$DIRECT_URL | gcloud secrets create DIRECT_URL --data-file=-
-
 $GEMINI_API_KEY = "..."
 $GEMINI_API_KEY | gcloud secrets create GEMINI_API_KEY --data-file=-
 ```
 
-すでにsecretがある場合は、`create` ではなく新しいversionを追加します。
+すでに secret がある場合は、`create` ではなく新しい version を追加します。
 
 ```powershell
-$DATABASE_URL | gcloud secrets versions add DATABASE_URL --data-file=-
-$DIRECT_URL | gcloud secrets versions add DIRECT_URL --data-file=-
 $GEMINI_API_KEY | gcloud secrets versions add GEMINI_API_KEY --data-file=-
 ```
 
-Cloud Runの実行サービスアカウントがSecret Managerを読めるようにします。デフォルトのCompute Engineサービスアカウントを使う場合は次の形です。
+Cloud Run の実行サービスアカウントが Secret Manager、Firestore、Cloud Storage を使えるようにします。デフォルトの Compute Engine サービスアカウントを使う場合は次の形です。
 
 ```powershell
 $PROJECT_NUMBER = gcloud projects describe $PROJECT_ID --format="value(projectNumber)"
 $CLOUD_RUN_SERVICE_ACCOUNT = "$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
 
-gcloud secrets add-iam-policy-binding DATABASE_URL `
-  --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding DIRECT_URL `
-  --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
-  --role="roles/secretmanager.secretAccessor"
-
 gcloud secrets add-iam-policy-binding GEMINI_API_KEY `
   --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
   --role="roles/secretmanager.secretAccessor"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID `
+  --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
+  --role="roles/datastore.user"
 
 gcloud storage buckets add-iam-policy-binding "gs://$GCS_BUCKET_NAME" `
   --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" `
   --role="roles/storage.objectAdmin"
 ```
 
-画像アップロードはFirebase Storageではなく `GCS_BUCKET_NAME` のCloud Storage bucketに保存します。Firebase側でStorageを有効化する必要はありません。
+メディアアップロードは Firebase Storage ではなく `GCS_BUCKET_NAME` の Cloud Storage bucket に保存します。Firebase Storage を有効化する必要はありません。
 
 ## ビルド
 
@@ -110,7 +98,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$GCS_BUCKET_NAME" `
 gcloud builds submit --tag $IMAGE
 ```
 
-## Cloud Runへデプロイ
+## Cloud Run へデプロイ
 
 ```powershell
 gcloud run deploy $SERVICE `
@@ -118,7 +106,7 @@ gcloud run deploy $SERVICE `
   --region $REGION `
   --allow-unauthenticated `
   --port 8080 `
-  --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY="..." `
+  --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY="$NEXT_PUBLIC_FIREBASE_API_KEY" `
   --set-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" `
   --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID="$PROJECT_ID" `
   --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" `
@@ -126,28 +114,26 @@ gcloud run deploy $SERVICE `
   --set-env-vars GEMINI_MODEL="$GEMINI_MODEL" `
   --set-env-vars STORAGE_BACKEND="gcs" `
   --set-env-vars GCS_BUCKET_NAME="$GCS_BUCKET_NAME" `
-  --set-secrets "DATABASE_URL=DATABASE_URL:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest"
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest"
 ```
 
-`--set-secrets` は `環境変数名=Secret Managerのsecret名:version` の指定です。`DATABASE_URL` に `$` は付けません。
-
-Cloud Run上ではFirebase Admin SDKはApplication Default Credentialsで初期化されるため、通常は `FIREBASE_CLIENT_EMAIL` と `FIREBASE_PRIVATE_KEY` は不要です。
+Cloud Run 上では Firebase Admin SDK は Application Default Credentials で初期化されるため、通常は `FIREBASE_CLIENT_EMAIL` と `FIREBASE_PRIVATE_KEY` は不要です。
 
 ## CI/CD
 
-GitHub ActionsでCIとCloud RunへのCDを実行します。
+GitHub Actions で CI と Cloud Run への CD を実行します。
 
-- `.github/workflows/ci.yml`: `push` / `pull_request` で `npm ci`、Prisma Client生成、lint、typecheckを実行します。
-- `.github/workflows/deploy-gcp.yml`: `master` への `push` または手動実行で、GitHub Actions runner上のDockerによるイメージ作成、Prisma migration、Cloud Runデプロイを実行します。
+- `.github/workflows/ci.yml`: `push` / `pull_request` で `npm ci`、lint、typecheck を実行します。
+- `.github/workflows/deploy-gcp.yml`: `master` への `push` または手動実行で、Docker image の作成、Artifact Registry への push、Cloud Run deploy を実行します。
 
-GitHub Repository Variablesに次を設定します。
+GitHub Repository Variables に次を設定します。
 
 ```text
 GCP_PROJECT_ID=your-project
 GCP_REGION=asia-northeast1
 CLOUD_RUN_SERVICE=lt-slide-editor
 ARTIFACT_REGISTRY_REPOSITORY=apps
-GCS_BUCKET_NAME=lt-slide-editor-images
+GCS_BUCKET_NAME=lt-slide-editor-media
 GEMINI_MODEL=gemini-2.5-flash
 NEXT_PUBLIC_FIREBASE_API_KEY=...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=PROJECT_ID.firebaseapp.com
@@ -156,41 +142,34 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=PROJECT_ID.appspot.com
 FIREBASE_PROJECT_ID=PROJECT_ID
 ```
 
-GitHub Repository Secretsに次を設定します。
+GitHub Repository Secrets に次を設定します。
 
 ```text
 GCP_WORKLOAD_IDENTITY_PROVIDER=projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID
 GCP_SERVICE_ACCOUNT=github-deploy@PROJECT_ID.iam.gserviceaccount.com
 ```
 
-Workload Identity Federationを使うため、GitHub Actionsから使うサービスアカウントには少なくとも次の権限を付与します。
+Workload Identity Federation を使うため、GitHub Actions から使うサービスアカウントには少なくとも次の権限を付与します。
 
 ```text
 roles/run.admin
 roles/artifactregistry.writer
 roles/iam.serviceAccountUser
-roles/secretmanager.secretAccessor
 roles/serviceusage.serviceUsageConsumer
 ```
 
-Cloud Run実行サービスアカウントを別に指定する場合は、その実行サービスアカウントにもSecret ManagerとCloud Storageへアクセスできる権限を付与してください。
+Cloud Run 実行サービスアカウントを別に指定する場合は、その実行サービスアカウントにも `roles/datastore.user`、Secret Manager の secret accessor、Cloud Storage bucket の object admin を付与してください。
 
-## Migration
+## Firestore
 
-Supabase Postgresに対してmigrationを実行するには、`DATABASE_URL` にpooler接続文字列、`DIRECT_URL` にdirect/session側の接続文字列を設定した環境で次を実行します。
+このアプリは Prisma migration を使いません。Firestore のコレクションはアプリの初回書き込み時に自動作成されます。
 
-```powershell
-npm run prisma:deploy
-```
+主なコレクション:
 
-CI/CDではCloud Run Jobとして、同じイメージに `DATABASE_URL` と `DIRECT_URL` secretを設定し、コマンドを `npm run prisma:deploy` にして実行します。PowerShellやGitHub ActionsではCloud Run Jobのargsを分けて渡します。
+- `users`
+- `decks`
+- `deckVersions`
+- `slideLibraryItems`
+- `mediaLibraryItems`
 
-```powershell
-gcloud run jobs deploy "$SERVICE-migrate" `
-  --image $IMAGE `
-  --region $REGION `
-  --set-secrets "DATABASE_URL=DATABASE_URL:latest,DIRECT_URL=DIRECT_URL:latest" `
-  --command npm `
-  --args run `
-  --args prisma:deploy
-```
+現在の実装はユーザー単位の取得後にアプリ側で `updatedAt` / `createdAt` の並び替えをするため、追加の composite index は不要です。大量データで一覧取得が重くなってきたら、`userId + updatedAt` などの composite index を作り、クエリ側を `orderBy` に寄せてください。

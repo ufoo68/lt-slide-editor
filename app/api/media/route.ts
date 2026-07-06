@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { createMedia, listMedia } from "@/lib/database";
 import { mediaLibraryPath, uploadObject } from "@/lib/storage";
 
 const allowedStillMediaTypes = new Set(["image/gif", "image/jpeg", "image/png", "image/svg+xml", "image/webp"]);
@@ -36,17 +36,7 @@ function mediaMarkdown(media: { contentType: string; filename: string; id: strin
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request);
-    const media = await prisma.mediaLibraryItem.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        filename: true,
-        contentType: true,
-        size: true,
-        updatedAt: true,
-      },
-    });
+    const media = await listMedia(user.id);
 
     return NextResponse.json({
       media: media.map((item) => ({
@@ -80,21 +70,12 @@ export async function POST(request: NextRequest) {
     const storagePath = mediaLibraryPath(user.id, file.name);
     await uploadObject(storagePath, body, file.type);
 
-    const media = await prisma.mediaLibraryItem.create({
-      data: {
-        userId: user.id,
-        filename: file.name,
-        storagePath,
-        contentType: file.type,
-        size: file.size,
-      },
-      select: {
-        id: true,
-        filename: true,
-        contentType: true,
-        size: true,
-        updatedAt: true,
-      },
+    const media = await createMedia({
+      userId: user.id,
+      filename: file.name,
+      storagePath,
+      contentType: file.type,
+      size: file.size,
     });
 
     return NextResponse.json(
