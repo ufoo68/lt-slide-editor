@@ -65,6 +65,16 @@ Then verify `http://localhost:3000` responds.
 
 ## PR Workflow
 
+Use the GitHub CLI (`gh`) from the beginning for all GitHub authentication, repository, issue, check, and pull-request operations. Do not try a GitHub app or connector first and then fall back to `gh`.
+
+Before publishing changes, verify the CLI and authentication:
+
+```bash
+gh --version
+gh auth status
+gh repo view --json nameWithOwner,defaultBranchRef
+```
+
 Use a branch named `agent/<short-description>` from `master`.
 
 Stage only intentional files. Do not include generated Next.js changes such as transient `next-env.d.ts` rewrites unless they are part of the requested work.
@@ -76,4 +86,4 @@ PR descriptions should include:
 - user/developer impact
 - validation commands run
 
-Open draft PRs by default unless the user asks for ready-for-review.
+Open draft PRs with `gh pr create --draft` by default unless the user asks for ready-for-review. When the PR body is multiline, write it to a temporary Markdown file and pass it with `--body-file`.

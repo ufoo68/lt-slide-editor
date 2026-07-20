@@ -243,7 +243,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
       <Header />
       <main className="flex min-h-[calc(100dvh-4rem-1px)] w-full flex-col gap-3 px-3 py-3 sm:px-4 sm:py-5 lg:h-[calc(100dvh-4rem-1px)] lg:gap-3 lg:overflow-hidden lg:py-3">
         <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-2 sm:block">
+          <div className="flex min-w-0 items-center gap-2 sm:block lg:flex-1">
             <Link
               aria-label={t.dashboard}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-foreground sm:hidden"
@@ -257,7 +257,7 @@ export function SharedSlideEditor({ mode }: SharedSlideEditorProps) {
               {t.dashboard}
             </Link>
             <input
-              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:mt-1 sm:w-full sm:text-2xl lg:min-w-72"
+              className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:mt-1 sm:w-full sm:text-2xl"
               onChange={(event) => setTitle(event.target.value)}
               value={title}
             />

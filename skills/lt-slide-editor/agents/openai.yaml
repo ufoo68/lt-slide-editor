@@ -1,0 +1,4 @@
+interface:
+  display_name: "LT Slide Editor"
+  short_description: "Create and revise LT Slide Editor decks"
+  default_prompt: "Use $lt-slide-editor to create or update slides in my LT Slide Editor deck."
