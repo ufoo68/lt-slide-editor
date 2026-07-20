@@ -15,6 +15,8 @@ export type AppUser = {
 export type Deck = {
   id: string;
   userId: string;
+  agentTokenCreatedAt?: Date | null;
+  agentTokenHash?: string | null;
   title: string;
   slug: string;
   markdown: string;
@@ -23,6 +25,8 @@ export type Deck = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type ClientDeck = Omit<Deck, "agentTokenHash">;
 
 export type SlideLibraryItem = {
   id: string;
@@ -110,9 +114,17 @@ function mapDeck(id: string, data: FirebaseFirestore.DocumentData | undefined): 
 
   return {
     ...deck,
+    agentTokenCreatedAt: data?.agentTokenCreatedAt ? asDate(data.agentTokenCreatedAt) : null,
+    agentTokenHash: deck.agentTokenHash ?? null,
     createdAt: asDate(data?.createdAt),
     updatedAt: asDate(data?.updatedAt),
   };
+}
+
+export function toClientDeck(deck: Deck): ClientDeck {
+  const { agentTokenHash, ...clientDeck } = deck;
+
+  return clientDeck;
 }
 
 function mapSlide(id: string, data: FirebaseFirestore.DocumentData | undefined): SlideLibraryItem | null {
@@ -230,6 +242,44 @@ export async function updateDeck(
     presentationMinutes: input.presentationMinutes,
     visibility: input.visibility,
     updatedAt: now,
+  });
+
+  return mapDeck(deckRef.id, (await deckRef.get()).data()) as Deck;
+}
+
+export async function getDeckById(id: string) {
+  const snapshot = await db().collection(collections.decks).doc(id).get();
+
+  return mapDeck(snapshot.id, snapshot.data());
+}
+
+export async function updateDeckMarkdownByToken(id: string, input: { markdown: string }) {
+  const deckRef = db().collection(collections.decks).doc(id);
+  const deck = await getDeckById(id);
+  if (!deck) {
+    return null;
+  }
+
+  const now = new Date();
+  await deckRef.update({
+    markdown: input.markdown,
+    updatedAt: now,
+  });
+
+  return mapDeck(deckRef.id, (await deckRef.get()).data()) as Deck;
+}
+
+export async function setDeckAgentTokenHash(id: string, userId: string, tokenHash: string | null) {
+  const deck = await getDeckForUser(id, userId);
+  if (!deck) {
+    return null;
+  }
+
+  const deckRef = db().collection(collections.decks).doc(id);
+  await deckRef.update({
+    agentTokenCreatedAt: tokenHash ? new Date() : null,
+    agentTokenHash: tokenHash,
+    updatedAt: new Date(),
   });
 
   return mapDeck(deckRef.id, (await deckRef.get()).data()) as Deck;
