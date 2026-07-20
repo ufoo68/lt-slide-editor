@@ -125,6 +125,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [fullMarkdownOpen, setFullMarkdownOpen] = useState(false);
+  const [mobileAiAgentOpen, setMobileAiAgentOpen] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
@@ -631,6 +632,25 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     );
   }
 
+  const slideAgentPanelProps = {
+    canManageDeckAgentToken: Boolean(deck),
+    canUndo: Boolean(aiAgentUndoState),
+    deckAgentToken,
+    deckAgentTokenCreatedAt: deck?.agentTokenCreatedAt ?? null,
+    error: aiAgentError,
+    externalSkill: aiAgentExternalSkill,
+    isLoading: aiAgentLoading,
+    isManagingDeckAgentToken: deckAgentTokenLoading,
+    messages: aiAgentMessages,
+    prompt: aiAgentPrompt,
+    onCreateDeckAgentToken: issueDeckAgentToken,
+    onExternalSkillChange: setAiAgentExternalSkill,
+    onPromptChange: setAiAgentPrompt,
+    onRevokeDeckAgentToken: revokeDeckAgentToken,
+    onRun: generateDeckWithAi,
+    onUndo: undoGeneratedDeck,
+  };
+
   return (
     <>
       <Header />
@@ -654,6 +674,9 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button size="sm" variant="primary" onPress={() => setMobileAiAgentOpen(true)}>
+                {t.aiAgent}
+              </Button>
               <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen((open) => !open)}>
                 {mobilePreviewOpen ? t.pageEdit : t.preview}
               </Button>
@@ -923,22 +946,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <div className="h-full min-h-0 p-3">
               <SlideAgentPanel
                 embedded
-                canUndo={Boolean(aiAgentUndoState)}
-                canManageDeckAgentToken={Boolean(deck)}
-                deckAgentToken={deckAgentToken}
-                deckAgentTokenCreatedAt={deck?.agentTokenCreatedAt ?? null}
-                error={aiAgentError}
-                externalSkill={aiAgentExternalSkill}
-                isLoading={aiAgentLoading}
-                isManagingDeckAgentToken={deckAgentTokenLoading}
-                messages={aiAgentMessages}
-                prompt={aiAgentPrompt}
-                onCreateDeckAgentToken={issueDeckAgentToken}
-                onExternalSkillChange={setAiAgentExternalSkill}
-                onPromptChange={setAiAgentPrompt}
-                onRevokeDeckAgentToken={revokeDeckAgentToken}
-                onRun={generateDeckWithAi}
-                onUndo={undoGeneratedDeck}
+                {...slideAgentPanelProps}
               />
             </div>
             ) : undefined
@@ -1077,6 +1085,15 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           onCopySlide={copyLibrarySlide}
           onInsertSlide={insertLibrarySlideAfterCurrent}
         />
+      ) : null}
+      {mobileAiAgentOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/70 p-3 lg:hidden">
+          <SlideAgentPanel
+            embedded
+            {...slideAgentPanelProps}
+            onClose={() => setMobileAiAgentOpen(false)}
+          />
+        </div>
       ) : null}
       {mediaOpen ? (
         <MediaLibraryDrawer
