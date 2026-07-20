@@ -15,26 +15,42 @@ export type SlideAgentMessage = {
 
 type SlideAgentPanelProps = {
   canUndo: boolean;
+  canManageDeckAgentToken: boolean;
+  deckAgentToken: string | null;
+  deckAgentTokenCreatedAt: string | null;
   error: string | null;
   embedded?: boolean;
   isLoading: boolean;
+  isManagingDeckAgentToken: boolean;
   messages: SlideAgentMessage[];
+  externalSkill: string;
   prompt: string;
   onClose?: () => void;
+  onCreateDeckAgentToken: () => void;
+  onExternalSkillChange: (externalSkill: string) => void;
   onPromptChange: (prompt: string) => void;
+  onRevokeDeckAgentToken: () => void;
   onRun: () => void;
   onUndo: () => void;
 };
 
 export function SlideAgentPanel({
   canUndo,
+  canManageDeckAgentToken,
+  deckAgentToken,
+  deckAgentTokenCreatedAt,
   error,
   embedded = false,
   isLoading,
+  isManagingDeckAgentToken,
   messages,
+  externalSkill,
   prompt,
   onClose,
+  onCreateDeckAgentToken,
+  onExternalSkillChange,
   onPromptChange,
+  onRevokeDeckAgentToken,
   onRun,
   onUndo,
 }: SlideAgentPanelProps) {
@@ -107,6 +123,56 @@ export function SlideAgentPanel({
       </div>
 
       <div className="grid gap-2">
+        <div className="grid gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.deckAgentToken}</p>
+              <p className="truncate text-xs font-medium text-ufoo-muted">
+                {deckAgentTokenCreatedAt ? t.deckAgentTokenActive : t.deckAgentTokenInactive}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                className="h-8"
+                isDisabled={!canManageDeckAgentToken || isLoading || isManagingDeckAgentToken}
+                size="sm"
+                variant="outline"
+                onPress={onCreateDeckAgentToken}
+              >
+                {t.issueDeckAgentToken}
+              </Button>
+              <Button
+                className="h-8"
+                isDisabled={!canManageDeckAgentToken || !deckAgentTokenCreatedAt || isLoading || isManagingDeckAgentToken}
+                size="sm"
+                variant="outline"
+                onPress={onRevokeDeckAgentToken}
+              >
+                {t.revokeDeckAgentToken}
+              </Button>
+            </div>
+          </div>
+          {deckAgentToken ? (
+            <textarea
+              aria-label={t.deckAgentToken}
+              className="h-16 resize-none rounded-md border border-ufoo-panel-border bg-[#15171d] p-2 font-mono text-xs leading-5 text-ufoo-ink outline-none"
+              readOnly
+              value={deckAgentToken}
+            />
+          ) : null}
+        </div>
+        <label className="grid gap-1">
+          <span className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.aiAgentSkill}</span>
+          <textarea
+            aria-label={t.aiAgentSkill}
+            className="h-20 resize-none rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2 font-mono text-xs leading-5 text-ufoo-ink outline-none placeholder:text-ufoo-muted focus:border-ufoo-neon focus:ring-1 focus:ring-ufoo-neon"
+            maxLength={20000}
+            onChange={(event) => onExternalSkillChange(event.target.value)}
+            placeholder={t.aiAgentSkillPlaceholder}
+            spellCheck={false}
+            value={externalSkill}
+          />
+        </label>
         <div className="flex items-center gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
           <textarea
             aria-label={t.aiAgentPrompt}

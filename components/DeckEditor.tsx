@@ -31,6 +31,7 @@ import { useLanguage } from "@/lib/i18n";
 
 type Deck = {
   id: string;
+  agentTokenCreatedAt?: string | null;
   title: string;
   slug: string;
   markdown: string;
@@ -124,6 +125,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [presentationMinutes, setPresentationMinutes] = useState(5);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [fullMarkdownOpen, setFullMarkdownOpen] = useState(false);
+  const [mobileAiAgentOpen, setMobileAiAgentOpen] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [savedState, setSavedState] = useState<SavedDeckState>(initialSavedState);
@@ -149,10 +151,13 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [aiAgentPrompt, setAiAgentPrompt] = useState("");
+  const [aiAgentExternalSkill, setAiAgentExternalSkill] = useState("");
   const [aiAgentMessages, setAiAgentMessages] = useState<SlideAgentMessage[]>([]);
   const [aiAgentError, setAiAgentError] = useState<string | null>(null);
   const [aiAgentLoading, setAiAgentLoading] = useState(false);
   const [aiAgentUndoState, setAiAgentUndoState] = useState<AiAgentUndoState | null>(null);
+  const [deckAgentToken, setDeckAgentToken] = useState<string | null>(null);
+  const [deckAgentTokenLoading, setDeckAgentTokenLoading] = useState(false);
   const parsedMarkdown = useMemo(() => parseDeckMarkdown(markdown), [markdown]);
   const slides = useMemo(() => splitEditableSlides(markdown), [markdown]);
   const presentationSlides = useMemo(
@@ -338,6 +343,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         body: JSON.stringify({
           currentMarkdown: markdown,
           deckId: deck?.id,
+          externalSkill: aiAgentExternalSkill.trim(),
           language,
           presentationMinutes,
           prompt,
@@ -370,6 +376,61 @@ export function DeckEditor({ mode }: DeckEditorProps) {
       setAiAgentMessages((messages) => [...messages, { role: "assistant", content: message }]);
     } finally {
       setAiAgentLoading(false);
+    }
+  }
+
+  async function issueDeckAgentToken() {
+    if (!deck) {
+      setAiAgentError(t.deckAgentTokenSaveFirst);
+      return;
+    }
+
+    setDeckAgentTokenLoading(true);
+    setAiAgentError(null);
+    try {
+      const idToken = await token();
+      const response = await fetch(`/api/presentations/${deck.id}/agent-token`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = (await response.json()) as { deck?: Deck; token?: string; error?: string };
+      if (!response.ok || !data.token || !data.deck) {
+        throw new Error(data.error || t.deckAgentTokenIssueFailed);
+      }
+
+      setDeck(data.deck);
+      setDeckAgentToken(data.token);
+      setStatus(t.deckAgentTokenIssued);
+    } catch (err) {
+      setAiAgentError(err instanceof Error ? err.message : t.deckAgentTokenIssueFailed);
+    } finally {
+      setDeckAgentTokenLoading(false);
+    }
+  }
+
+  async function revokeDeckAgentToken() {
+    if (!deck) return;
+
+    setDeckAgentTokenLoading(true);
+    setAiAgentError(null);
+    try {
+      const idToken = await token();
+      const response = await fetch(`/api/presentations/${deck.id}/agent-token`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = (await response.json()) as { deck?: Deck; error?: string };
+      if (!response.ok || !data.deck) {
+        throw new Error(data.error || t.deckAgentTokenRevokeFailed);
+      }
+
+      setDeck(data.deck);
+      setDeckAgentToken(null);
+      setStatus(t.deckAgentTokenRevoked);
+    } catch (err) {
+      setAiAgentError(err instanceof Error ? err.message : t.deckAgentTokenRevokeFailed);
+    } finally {
+      setDeckAgentTokenLoading(false);
     }
   }
 
@@ -571,6 +632,25 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     );
   }
 
+  const slideAgentPanelProps = {
+    canManageDeckAgentToken: Boolean(deck),
+    canUndo: Boolean(aiAgentUndoState),
+    deckAgentToken,
+    deckAgentTokenCreatedAt: deck?.agentTokenCreatedAt ?? null,
+    error: aiAgentError,
+    externalSkill: aiAgentExternalSkill,
+    isLoading: aiAgentLoading,
+    isManagingDeckAgentToken: deckAgentTokenLoading,
+    messages: aiAgentMessages,
+    prompt: aiAgentPrompt,
+    onCreateDeckAgentToken: issueDeckAgentToken,
+    onExternalSkillChange: setAiAgentExternalSkill,
+    onPromptChange: setAiAgentPrompt,
+    onRevokeDeckAgentToken: revokeDeckAgentToken,
+    onRun: generateDeckWithAi,
+    onUndo: undoGeneratedDeck,
+  };
+
   return (
     <>
       <Header />
@@ -594,6 +674,9 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-stone-600">{t.slidePage}: {safeActiveSlideIndex + 1}</span>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button size="sm" variant="primary" onPress={() => setMobileAiAgentOpen(true)}>
+                {t.aiAgent}
+              </Button>
               <Button size="sm" variant="outline" onPress={() => setMobilePreviewOpen((open) => !open)}>
                 {mobilePreviewOpen ? t.pageEdit : t.preview}
               </Button>
@@ -863,14 +946,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
             <div className="h-full min-h-0 p-3">
               <SlideAgentPanel
                 embedded
-                canUndo={Boolean(aiAgentUndoState)}
-                error={aiAgentError}
-                isLoading={aiAgentLoading}
-                messages={aiAgentMessages}
-                prompt={aiAgentPrompt}
-                onPromptChange={setAiAgentPrompt}
-                onRun={generateDeckWithAi}
-                onUndo={undoGeneratedDeck}
+                {...slideAgentPanelProps}
               />
             </div>
             ) : undefined
@@ -1009,6 +1085,15 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           onCopySlide={copyLibrarySlide}
           onInsertSlide={insertLibrarySlideAfterCurrent}
         />
+      ) : null}
+      {mobileAiAgentOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/70 p-3 lg:hidden">
+          <SlideAgentPanel
+            embedded
+            {...slideAgentPanelProps}
+            onClose={() => setMobileAiAgentOpen(false)}
+          />
+        </div>
       ) : null}
       {mediaOpen ? (
         <MediaLibraryDrawer

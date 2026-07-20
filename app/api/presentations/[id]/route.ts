@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { deleteDeck, getDeckForUser, updateDeck } from "@/lib/database";
+import { deleteDeck, getDeckForUser, toClientDeck, updateDeck } from "@/lib/database";
 
 const updateDeckSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ deck });
+    return NextResponse.json({ deck: toClientDeck(deck) });
   } catch (error) {
     return apiError(error);
   }
@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ deck });
+    return NextResponse.json({ deck: toClientDeck(deck) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.flatten() }, { status: 400 });

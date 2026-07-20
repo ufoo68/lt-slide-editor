@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { createDeck, listDecks } from "@/lib/database";
+import { createDeck, listDecks, toClientDeck } from "@/lib/database";
 import { uniqueDeckSlug } from "@/lib/slug";
 
 const createDeckSchema = z.object({
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request);
     const decks = await listDecks(user.id);
-    return NextResponse.json({ decks });
+    return NextResponse.json({ decks: decks.map(toClientDeck) });
   } catch (error) {
     return apiError(error);
   }
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       slug,
     });
 
-    return NextResponse.json({ deck }, { status: 201 });
+    return NextResponse.json({ deck: toClientDeck(deck) }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.flatten() }, { status: 400 });
