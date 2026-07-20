@@ -16,6 +16,12 @@ const requestSchema = z.object({
   title: z.string().trim().max(120).optional().default(""),
 });
 
+const directApplySchema = z.object({
+  deckId: z.string().trim().min(1).max(120),
+  markdown: z.string().trim().min(1).max(60000),
+  notes: z.string().trim().max(2000).optional().default(""),
+});
+
 const resultSchema = z.object({
   markdown: z.string().trim().min(1).max(60000),
   notes: z.string().trim().max(2000).default(""),
@@ -255,6 +261,68 @@ async function authorizeDeckAgent(request: NextRequest, deckId: string | undefin
     deckToken: false,
     userId: user.id,
   };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const deckId = request.nextUrl.searchParams.get("deckId")?.trim() || undefined;
+    const authorization = await authorizeDeckAgent(request, deckId);
+
+    if (!deckId) {
+      return NextResponse.json({ error: "deckId is required" }, { status: 400 });
+    }
+
+    const deck = await getDeckById(deckId);
+    if (!deck || deck.userId !== authorization.userId) {
+      return NextResponse.json({ error: "Deck not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      deck: {
+        id: deck.id,
+        markdown: deck.markdown,
+        presentationMinutes: deck.presentationMinutes,
+        title: deck.title,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Response) return error;
+
+    console.error(error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const input = directApplySchema.parse(await request.json());
+    const authorization = await authorizeDeckAgent(request, input.deckId);
+    const deck = await getDeckById(input.deckId);
+
+    if (!deck || deck.userId !== authorization.userId) {
+      return NextResponse.json({ error: "Deck not found" }, { status: 404 });
+    }
+
+    const markdown = stripMarkdownFence(input.markdown);
+    await updateDeckMarkdownByToken(input.deckId, { markdown });
+
+    return NextResponse.json({
+      applied: true,
+      result: { markdown, notes: input.notes },
+    });
+  } catch (error) {
+    if (error instanceof Response) return error;
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.flatten() },
+        { status: 400 },
+      );
+    }
+
+    console.error(error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 async function normalizeInput(input: z.infer<typeof requestSchema>): Promise<DeckAgentInput> {

@@ -28,28 +28,30 @@ To use Gemini fact checking with Google Search grounding, set
 ## Codex / External Skill Access
 
 For external slide-generation workflows, open a saved deck and issue a
-Deck token from the AI panel. The token is scoped to that deck and can call
-the deck agent without Firebase user authentication.
+Deck token from the AI panel. Codex can use it to read the current deck and
+write completed Markdown directly without invoking Gemini.
 
 ```bash
-curl -X POST https://lt-slide-editor.ufoo68.com/api/ai/deck-agent \
+curl "https://lt-slide-editor.ufoo68.com/api/ai/deck-agent?deckId=DECK_ID" \
+  -H "Authorization: Bearer ltsd.DECK_ID.SECRET"
+
+curl -X PUT https://lt-slide-editor.ufoo68.com/api/ai/deck-agent \
   -H "Authorization: Bearer ltsd.DECK_ID.SECRET" \
   -H "Content-Type: application/json" \
   -d '{
     "deckId": "DECK_ID",
-    "language": "ja",
-    "prompt": "Codexから7分LTのスライドを作って",
-    "externalSkill": "# Skill guidance pasted from SKILL.md",
-    "applyToDeck": true
+    "markdown": "# Codexが作成した完成スライド",
+    "notes": "7分LTとして直接作成"
 }'
 ```
 
 Use `http://localhost:3000` instead of `https://lt-slide-editor.ufoo68.com`
 when testing against a local dev server.
 
-`externalSkill` is treated as slide-generation guidance only. The app does
-not execute commands, tools, or filesystem instructions from pasted skill
-text. Revoke and reissue the Deck token from the AI panel if it is exposed.
+`POST /api/ai/deck-agent` remains available for the editor's built-in Gemini
+agent. External Codex skills should use GET and PUT so generation happens in
+Codex and only deck storage happens in LT Slide Editor. Revoke and reissue the
+Deck token from the AI panel if it is exposed.
 
 ## Common Commands
 

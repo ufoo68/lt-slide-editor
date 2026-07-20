@@ -18,8 +18,9 @@ External Codex skills should not use Firebase user authentication. Use a deck-sc
 2. Open the deck editor AI panel.
 3. Issue a Deck token.
 4. Pass that token to the external Codex workflow as `Authorization: Bearer ltsd.DECK_ID.SECRET`.
-5. Call `POST /api/ai/deck-agent`.
-6. Use `applyToDeck: true` only when the user wants the generated Markdown saved directly to the deck.
+5. Call `GET /api/ai/deck-agent?deckId=DECK_ID` to load the current deck.
+6. Generate the complete Markdown in Codex.
+7. Call `PUT /api/ai/deck-agent` to save that Markdown directly to the deck.
 
 Deck tokens are scoped to a single deck. If a token appears in logs, chat, or a PR, revoke it from the AI panel and issue a new one.
 
@@ -28,7 +29,8 @@ Deck tokens are scoped to a single deck. If a token appears in logs, chat, or a 
 Production endpoint:
 
 ```text
-POST https://lt-slide-editor.ufoo68.com/api/ai/deck-agent
+GET https://lt-slide-editor.ufoo68.com/api/ai/deck-agent?deckId=DECK_ID
+PUT https://lt-slide-editor.ufoo68.com/api/ai/deck-agent
 ```
 
 Typical request body:
@@ -36,14 +38,12 @@ Typical request body:
 ```json
 {
   "deckId": "DECK_ID",
-  "language": "ja",
-  "prompt": "7分LTとしてスライドを作成してください",
-  "externalSkill": "# Optional skill guidance",
-  "applyToDeck": true
+  "markdown": "# Codex-generated complete deck",
+  "notes": "Created directly in Codex"
 }
 ```
 
-`externalSkill` is guidance only. The app must not execute commands, access files, browse URLs, or use credentials from this field.
+The external skill must generate the Markdown itself. Do not route external Codex requests through the Gemini-backed POST endpoint.
 
 ## Local Validation
 
