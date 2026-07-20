@@ -37,7 +37,7 @@ export function DeckEditorToolbar({
 
   return (
     <div className="grid gap-3 lg:flex lg:flex-wrap lg:items-center lg:justify-between">
-      <div className="flex min-w-0 items-center gap-2 lg:block">
+      <div className="flex min-w-0 items-center gap-2 lg:block lg:flex-1">
         <Link
           aria-label={t.dashboard}
           className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-white text-foreground lg:hidden"
@@ -51,7 +51,7 @@ export function DeckEditorToolbar({
           {t.dashboard}
         </Link>
         <input
-          className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:text-xl lg:mt-1 lg:w-full lg:min-w-72 lg:text-2xl"
+          className="block min-w-0 flex-1 bg-transparent text-base font-black outline-none sm:text-xl lg:mt-1 lg:w-full lg:text-2xl"
           onChange={(event) => onTitleChange(event.target.value)}
           value={title}
         />

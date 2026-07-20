@@ -943,7 +943,7 @@ export function DeckEditor({ mode }: DeckEditorProps) {
           }
           inspector={
             aiAgentPaneOpen ? (
-            <div className="h-full min-h-0 p-3">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden p-3">
               <SlideAgentPanel
                 embedded
                 {...slideAgentPanelProps}

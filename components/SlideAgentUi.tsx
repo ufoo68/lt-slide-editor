@@ -56,7 +56,7 @@ export function SlideAgentPanel({
 }: SlideAgentPanelProps) {
   const { t } = useLanguage();
   const containerClassName = embedded
-    ? "grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-md border border-ufoo-panel-border bg-[#15171d] p-3 text-white"
+    ? "grid h-full min-h-0 min-w-0 w-full max-w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-md border border-ufoo-panel-border bg-[#15171d] p-3 text-white"
     : "fixed bottom-4 right-4 z-40 grid max-h-[min(42rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-3 rounded-lg border border-sky-200 bg-white p-4 shadow-2xl";
   const headingClassName = embedded
     ? "text-sm font-black uppercase tracking-normal text-ufoo-ink"
@@ -67,8 +67,8 @@ export function SlideAgentPanel({
 
   return (
     <aside className={containerClassName}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className={headingClassName}>{t.aiAgent}</h2>
           <p className={descriptionClassName}>{t.aiAgentDescription}</p>
         </div>
@@ -82,8 +82,8 @@ export function SlideAgentPanel({
         ) : null}
       </div>
 
-      <div className="min-h-0 overflow-y-auto rounded-md border border-line bg-[#0c0f15] p-3">
-        <div className="grid gap-3">
+      <div className="min-h-0 min-w-0 overflow-y-auto rounded-md border border-line bg-[#0c0f15] p-3">
+        <div className="grid min-w-0 gap-3">
           {messages.length === 0 && !error && !isLoading ? (
             <div className="max-w-[92%] justify-self-start rounded-lg rounded-tl-sm border border-ufoo-panel-border bg-[#15171d] p-3 text-sm font-medium leading-6 text-ufoo-ink">
               {t.aiAgentEmpty}
@@ -122,18 +122,17 @@ export function SlideAgentPanel({
         </div>
       </div>
 
-      <div className="grid gap-2">
-        <div className="grid gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.deckAgentToken}</p>
-              <p className="truncate text-xs font-medium text-ufoo-muted">
-                {deckAgentTokenCreatedAt ? t.deckAgentTokenActive : t.deckAgentTokenInactive}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
+      <div className="grid min-w-0 gap-2">
+        <div className="grid min-w-0 gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.deckAgentToken}</p>
+            <p className="truncate text-xs font-medium text-ufoo-muted">
+              {deckAgentTokenCreatedAt ? t.deckAgentTokenActive : t.deckAgentTokenInactive}
+            </p>
+          </div>
+          <div className="grid min-w-0 grid-cols-2 gap-2">
               <Button
-                className="h-8"
+                className="h-8 min-w-0 w-full px-2 text-xs"
                 isDisabled={!canManageDeckAgentToken || isLoading || isManagingDeckAgentToken}
                 size="sm"
                 variant="outline"
@@ -142,7 +141,7 @@ export function SlideAgentPanel({
                 {t.issueDeckAgentToken}
               </Button>
               <Button
-                className="h-8"
+                className="h-8 min-w-0 w-full px-2 text-xs"
                 isDisabled={!canManageDeckAgentToken || !deckAgentTokenCreatedAt || isLoading || isManagingDeckAgentToken}
                 size="sm"
                 variant="outline"
@@ -150,7 +149,6 @@ export function SlideAgentPanel({
               >
                 {t.revokeDeckAgentToken}
               </Button>
-            </div>
           </div>
           {deckAgentToken ? (
             <textarea
@@ -176,7 +174,7 @@ export function SlideAgentPanel({
         <div className="flex items-center gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
           <textarea
             aria-label={t.aiAgentPrompt}
-            className="h-7 flex-1 resize-none border-0 bg-transparent p-1 text-sm font-medium leading-5 text-ufoo-ink outline-none placeholder:text-ufoo-muted"
+            className="h-7 min-w-0 flex-1 resize-none border-0 bg-transparent p-1 text-sm font-medium leading-5 text-ufoo-ink outline-none placeholder:text-ufoo-muted"
             maxLength={8000}
             onChange={(event) => onPromptChange(event.target.value)}
             placeholder={t.aiAgentPromptPlaceholder}
