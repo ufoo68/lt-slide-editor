@@ -52,8 +52,8 @@ export function SlideAgentPanel({
 }: SlideAgentPanelProps) {
   const { t } = useLanguage();
   const containerClassName = embedded
-    ? "grid h-full min-h-0 min-w-0 w-full max-w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-md border border-ufoo-panel-border bg-[#15171d] p-3 text-white"
-    : "fixed bottom-4 right-4 z-40 grid max-h-[min(42rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-3 rounded-lg border border-sky-200 bg-white p-4 shadow-2xl";
+    ? "grid h-full min-h-0 min-w-0 w-full max-w-full grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-md border border-ufoo-panel-border bg-[#15171d] p-3 text-white"
+    : "fixed bottom-4 right-4 z-40 grid max-h-[min(42rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-3 rounded-lg border border-sky-200 bg-white p-4 shadow-2xl";
   const headingClassName = embedded
     ? "text-sm font-black uppercase tracking-normal text-ufoo-ink"
     : "text-sm font-black uppercase tracking-normal text-stone-700";
@@ -75,6 +75,43 @@ export function SlideAgentPanel({
               <path d="m6 6 12 12" />
             </svg>
           </Button>
+        ) : null}
+      </div>
+
+      <div className="grid min-w-0 gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.deckAgentToken}</p>
+          <p className="truncate text-xs font-medium text-ufoo-muted">
+            {deckAgentTokenCreatedAt ? t.deckAgentTokenActive : t.deckAgentTokenInactive}
+          </p>
+        </div>
+        <div className="grid min-w-0 grid-cols-2 gap-2">
+          <Button
+            className="h-8 min-w-0 w-full px-2 text-xs"
+            isDisabled={!canManageDeckAgentToken || isLoading || isManagingDeckAgentToken}
+            size="sm"
+            variant="outline"
+            onPress={onCreateDeckAgentToken}
+          >
+            {t.issueDeckAgentToken}
+          </Button>
+          <Button
+            className="h-8 min-w-0 w-full px-2 text-xs"
+            isDisabled={!canManageDeckAgentToken || !deckAgentTokenCreatedAt || isLoading || isManagingDeckAgentToken}
+            size="sm"
+            variant="outline"
+            onPress={onRevokeDeckAgentToken}
+          >
+            {t.revokeDeckAgentToken}
+          </Button>
+        </div>
+        {deckAgentToken ? (
+          <textarea
+            aria-label={t.deckAgentToken}
+            className="h-16 resize-none rounded-md border border-ufoo-panel-border bg-[#15171d] p-2 font-mono text-xs leading-5 text-ufoo-ink outline-none"
+            readOnly
+            value={deckAgentToken}
+          />
         ) : null}
       </div>
 
@@ -119,42 +156,6 @@ export function SlideAgentPanel({
       </div>
 
       <div className="grid min-w-0 gap-2">
-        <div className="grid min-w-0 gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.deckAgentToken}</p>
-            <p className="truncate text-xs font-medium text-ufoo-muted">
-              {deckAgentTokenCreatedAt ? t.deckAgentTokenActive : t.deckAgentTokenInactive}
-            </p>
-          </div>
-          <div className="grid min-w-0 grid-cols-2 gap-2">
-              <Button
-                className="h-8 min-w-0 w-full px-2 text-xs"
-                isDisabled={!canManageDeckAgentToken || isLoading || isManagingDeckAgentToken}
-                size="sm"
-                variant="outline"
-                onPress={onCreateDeckAgentToken}
-              >
-                {t.issueDeckAgentToken}
-              </Button>
-              <Button
-                className="h-8 min-w-0 w-full px-2 text-xs"
-                isDisabled={!canManageDeckAgentToken || !deckAgentTokenCreatedAt || isLoading || isManagingDeckAgentToken}
-                size="sm"
-                variant="outline"
-                onPress={onRevokeDeckAgentToken}
-              >
-                {t.revokeDeckAgentToken}
-              </Button>
-          </div>
-          {deckAgentToken ? (
-            <textarea
-              aria-label={t.deckAgentToken}
-              className="h-16 resize-none rounded-md border border-ufoo-panel-border bg-[#15171d] p-2 font-mono text-xs leading-5 text-ufoo-ink outline-none"
-              readOnly
-              value={deckAgentToken}
-            />
-          ) : null}
-        </div>
         <div className="grid min-w-0 gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2 focus-within:border-ufoo-neon focus-within:ring-1 focus-within:ring-ufoo-neon">
           <textarea
             aria-label={t.aiAgentPrompt}
