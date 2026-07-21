@@ -23,11 +23,9 @@ type SlideAgentPanelProps = {
   isLoading: boolean;
   isManagingDeckAgentToken: boolean;
   messages: SlideAgentMessage[];
-  externalSkill: string;
   prompt: string;
   onClose?: () => void;
   onCreateDeckAgentToken: () => void;
-  onExternalSkillChange: (externalSkill: string) => void;
   onPromptChange: (prompt: string) => void;
   onRevokeDeckAgentToken: () => void;
   onRun: () => void;
@@ -44,11 +42,9 @@ export function SlideAgentPanel({
   isLoading,
   isManagingDeckAgentToken,
   messages,
-  externalSkill,
   prompt,
   onClose,
   onCreateDeckAgentToken,
-  onExternalSkillChange,
   onPromptChange,
   onRevokeDeckAgentToken,
   onRun,
@@ -159,39 +155,29 @@ export function SlideAgentPanel({
             />
           ) : null}
         </div>
-        <label className="grid gap-1">
-          <span className="text-xs font-black uppercase tracking-normal text-ufoo-muted">{t.aiAgentSkill}</span>
-          <textarea
-            aria-label={t.aiAgentSkill}
-            className="h-20 resize-none rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2 font-mono text-xs leading-5 text-ufoo-ink outline-none placeholder:text-ufoo-muted focus:border-ufoo-neon focus:ring-1 focus:ring-ufoo-neon"
-            maxLength={20000}
-            onChange={(event) => onExternalSkillChange(event.target.value)}
-            placeholder={t.aiAgentSkillPlaceholder}
-            spellCheck={false}
-            value={externalSkill}
-          />
-        </label>
-        <div className="flex items-center gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2">
+        <div className="grid min-w-0 gap-2 rounded-lg border border-ufoo-panel-border bg-[#0c0f15] p-2 focus-within:border-ufoo-neon focus-within:ring-1 focus-within:ring-ufoo-neon">
           <textarea
             aria-label={t.aiAgentPrompt}
-            className="h-7 min-w-0 flex-1 resize-none border-0 bg-transparent p-1 text-sm font-medium leading-5 text-ufoo-ink outline-none placeholder:text-ufoo-muted"
+            className="h-28 min-w-0 w-full resize-y border-0 bg-transparent p-1 text-sm font-medium leading-6 text-ufoo-ink outline-none placeholder:text-ufoo-muted"
             maxLength={8000}
             onChange={(event) => onPromptChange(event.target.value)}
             placeholder={t.aiAgentPromptPlaceholder}
             value={prompt}
           />
-          <Button aria-label={t.undoGeneratedMarkdown} className="h-9 w-9 min-w-9 px-0" isDisabled={isLoading || !canUndo} size="sm" variant="outline" onPress={onUndo}>
-            <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M3 7v6h6" />
-              <path d="M21 17a9 9 0 0 0-15-6.7L3 13" />
-            </svg>
-          </Button>
-          <Button aria-label={t.runAiAgent} className="h-9 w-9 min-w-9 px-0" isDisabled={isLoading || !prompt.trim()} size="sm" variant="primary" onPress={onRun}>
-            <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="m22 2-7 20-4-9-9-4Z" />
-              <path d="M22 2 11 13" />
-            </svg>
-          </Button>
+          <div className="flex justify-end gap-2">
+            <Button aria-label={t.undoGeneratedMarkdown} className="h-9 w-9 min-w-9 px-0" isDisabled={isLoading || !canUndo} size="sm" variant="outline" onPress={onUndo}>
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M3 7v6h6" />
+                <path d="M21 17a9 9 0 0 0-15-6.7L3 13" />
+              </svg>
+            </Button>
+            <Button aria-label={t.runAiAgent} className="h-9 w-9 min-w-9 px-0" isDisabled={isLoading || !prompt.trim()} size="sm" variant="primary" onPress={onRun}>
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m22 2-7 20-4-9-9-4Z" />
+                <path d="M22 2 11 13" />
+              </svg>
+            </Button>
+          </div>
         </div>
       </div>
     </aside>

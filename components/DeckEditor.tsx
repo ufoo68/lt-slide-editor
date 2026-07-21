@@ -151,7 +151,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [aiAgentPrompt, setAiAgentPrompt] = useState("");
-  const [aiAgentExternalSkill, setAiAgentExternalSkill] = useState("");
   const [aiAgentMessages, setAiAgentMessages] = useState<SlideAgentMessage[]>([]);
   const [aiAgentError, setAiAgentError] = useState<string | null>(null);
   const [aiAgentLoading, setAiAgentLoading] = useState(false);
@@ -343,7 +342,6 @@ export function DeckEditor({ mode }: DeckEditorProps) {
         body: JSON.stringify({
           currentMarkdown: markdown,
           deckId: deck?.id,
-          externalSkill: aiAgentExternalSkill.trim(),
           language,
           presentationMinutes,
           prompt,
@@ -638,13 +636,11 @@ export function DeckEditor({ mode }: DeckEditorProps) {
     deckAgentToken,
     deckAgentTokenCreatedAt: deck?.agentTokenCreatedAt ?? null,
     error: aiAgentError,
-    externalSkill: aiAgentExternalSkill,
     isLoading: aiAgentLoading,
     isManagingDeckAgentToken: deckAgentTokenLoading,
     messages: aiAgentMessages,
     prompt: aiAgentPrompt,
     onCreateDeckAgentToken: issueDeckAgentToken,
-    onExternalSkillChange: setAiAgentExternalSkill,
     onPromptChange: setAiAgentPrompt,
     onRevokeDeckAgentToken: revokeDeckAgentToken,
     onRun: generateDeckWithAi,
