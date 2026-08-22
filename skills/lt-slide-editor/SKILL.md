@@ -20,9 +20,10 @@ Extract `deckId` from the token's second dot-separated segment. Do not ask the u
 
 1. Call `GET /api/ai/deck-agent?deckId=DECK_ID` with the deck token as Bearer authentication.
 2. Use the returned title, duration, and current Markdown as context.
-3. Create the complete replacement Markdown deck yourself. Do not ask Gemini or another model to generate it.
-4. When the user wants the result saved, call `PUT /api/ai/deck-agent` with the complete Markdown.
-5. Report that the deck was applied and briefly summarize the changes.
+3. Create a concise deck title and the complete replacement Markdown deck yourself. Do not ask Gemini or another model to generate it.
+4. When images are useful, upload them through `POST /api/ai/deck-agent/media`, then insert the returned `media.markdown` in the appropriate slide.
+5. When the user wants the result saved, call `PUT /api/ai/deck-agent` with the title and complete Markdown.
+6. Report that the deck was applied and briefly summarize the changes.
 
 Read the current deck:
 
@@ -39,6 +40,7 @@ curl -X PUT https://lt-slide-editor.ufoo68.com/api/ai/deck-agent \
   -H "Content-Type: application/json" \
   -d '{
     "deckId": "DECK_ID",
+    "title": "Codexと作る5分LT",
     "markdown": "# Complete replacement deck",
     "notes": "Codexが7分LTとして直接作成"
   }'
@@ -48,6 +50,7 @@ PUT fields:
 
 - `deckId`: Required; extract it from the token.
 - `markdown`: Required complete replacement deck; maximum 60,000 characters.
+- `title`: Optional deck title; maximum 120 characters. Create and send one for new or substantially revised decks.
 - `notes`: Optional short change summary; maximum 2,000 characters.
 
 Successful responses have this shape:
@@ -57,10 +60,24 @@ Successful responses have this shape:
   "applied": true,
   "result": {
     "markdown": "# Complete replacement deck",
-    "notes": "Short generation summary"
+    "notes": "Short generation summary",
+    "title": "Codexと作る5分LT"
   }
 }
 ```
+
+## Upload and insert images
+
+Upload an image using the same deck token. Supported image types are GIF, JPEG, PNG, SVG, and WebP, up to 5 MB.
+
+```bash
+curl -X POST https://lt-slide-editor.ufoo68.com/api/ai/deck-agent/media \
+  -H "Authorization: Bearer ltsd.DECK_ID.SECRET" \
+  -F "deckId=DECK_ID" \
+  -F "file=@/path/to/image.png"
+```
+
+The response includes `media.markdown`. Insert that exact Markdown into the target slide. To reuse an existing image, call `GET /api/ai/deck-agent/media?deckId=DECK_ID` and select from the returned `media` array. Do not embed local filesystem paths in deck Markdown.
 
 ## Handle errors
 

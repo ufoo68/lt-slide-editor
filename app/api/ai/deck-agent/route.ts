@@ -3,7 +3,7 @@ import { ApiError, GoogleGenAI, type Content } from "@google/genai";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { parseDeckAgentToken, verifyDeckAgentToken } from "@/lib/deck-agent-token";
-import { getDeckAiHistory, getDeckById, saveDeckAiHistory, updateDeckMarkdownByToken } from "@/lib/database";
+import { getDeckAiHistory, getDeckById, saveDeckAiHistory, updateDeckByToken } from "@/lib/database";
 
 const requestSchema = z.object({
   applyToDeck: z.boolean().optional().default(false),
@@ -20,6 +20,7 @@ const directApplySchema = z.object({
   deckId: z.string().trim().min(1).max(120),
   markdown: z.string().trim().min(1).max(60000),
   notes: z.string().trim().max(2000).optional().default(""),
+  title: z.string().trim().min(1).max(120).optional(),
 });
 
 const resultSchema = z.object({
@@ -304,11 +305,11 @@ export async function PUT(request: NextRequest) {
     }
 
     const markdown = stripMarkdownFence(input.markdown);
-    await updateDeckMarkdownByToken(input.deckId, { markdown });
+    await updateDeckByToken(input.deckId, { markdown, title: input.title });
 
     return NextResponse.json({
       applied: true,
-      result: { markdown, notes: input.notes },
+      result: { markdown, notes: input.notes, title: input.title ?? deck.title },
     });
   } catch (error) {
     if (error instanceof Response) return error;
@@ -471,7 +472,7 @@ export async function POST(request: NextRequest) {
     const result = await generateDeck(input, authorization.userId);
 
     if (input.applyToDeck) {
-      await updateDeckMarkdownByToken(input.deckId as string, { markdown: result.markdown });
+      await updateDeckByToken(input.deckId as string, { markdown: result.markdown });
     }
 
     return NextResponse.json({ applied: input.applyToDeck, result });

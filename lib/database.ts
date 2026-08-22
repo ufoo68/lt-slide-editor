@@ -253,7 +253,7 @@ export async function getDeckById(id: string) {
   return mapDeck(snapshot.id, snapshot.data());
 }
 
-export async function updateDeckMarkdownByToken(id: string, input: { markdown: string }) {
+export async function updateDeckByToken(id: string, input: { markdown: string; title?: string }) {
   const deckRef = db().collection(collections.decks).doc(id);
   const deck = await getDeckById(id);
   if (!deck) {
@@ -263,6 +263,7 @@ export async function updateDeckMarkdownByToken(id: string, input: { markdown: s
   const now = new Date();
   await deckRef.update({
     markdown: input.markdown,
+    ...(input.title ? { title: input.title } : {}),
     updatedAt: now,
   });
 
