@@ -159,6 +159,7 @@ export function SlidePreview({
   const settings = useMemo(() => parseDeckMarkdown(markdown).settings, [markdown]);
   const themeClasses = slideThemeClasses(settings.theme);
   const [internalActive, setInternalActive] = useState(0);
+  const [mermaidRenderVersion, setMermaidRenderVersion] = useState(0);
   const dragRef = useRef<MediaDragState | null>(null);
   const hoverMediaRef = useRef<HTMLElement | null>(null);
   const active = activeIndex ?? internalActive;
@@ -332,7 +333,7 @@ export function SlidePreview({
           <SlideContent
             className={`slide-content flex h-full flex-col justify-center ${compact ? "p-3 pt-7 pb-7 sm:p-4 sm:pt-8 sm:pb-8" : "p-4 pt-9 pb-9 sm:p-6 sm:pt-10 sm:pb-10 lg:p-8 lg:pt-12 lg:pb-12"} ${editableMedia ? "slide-content-editable" : ""}`}
             html={current.html}
-            key={`${current.index}-${current.html}`}
+            key={`${current.index}-${current.html}-${mermaidRenderVersion}`}
           />
           {settings.footer ? (
             <div className="pointer-events-none absolute bottom-3 left-4 right-4 z-10 truncate text-xs font-semibold opacity-60 sm:left-6 sm:right-6">
@@ -342,7 +343,7 @@ export function SlidePreview({
         </div>
       </div>
       {hideControls ? null : (
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+        <div className="grid grid-cols-[1fr_auto_auto_1fr] items-center gap-2 sm:gap-3">
           <button
             className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40`}
             disabled={active === 0}
@@ -354,6 +355,13 @@ export function SlidePreview({
           <span className="px-2 text-center text-sm font-semibold text-stone-600">
             {current.index + 1} / {slides.length}
           </span>
+          <button
+            className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold`}
+            onClick={() => setMermaidRenderVersion((version) => version + 1)}
+            type="button"
+          >
+            {t.rerenderMermaid}
+          </button>
           <button
             className={`${compact ? "h-9" : "h-10"} rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-40`}
             disabled={active >= slides.length - 1}

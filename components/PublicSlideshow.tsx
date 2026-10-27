@@ -42,6 +42,7 @@ export function PublicSlideshow({
   const { t } = useLanguage();
   const [active, setActive] = useState(() => clampSlideIndex(initialActive, slides.length));
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mermaidRenderVersion, setMermaidRenderVersion] = useState(0);
   const totalSeconds = Math.max(1, Math.round(presentationMinutes)) * 60;
   const [remainingSeconds, setRemainingSeconds] = useState(totalSeconds);
   const [timerEndsAt, setTimerEndsAt] = useState<number | null>(null);
@@ -207,6 +208,13 @@ export function PublicSlideshow({
               →
             </button>
             <button
+              className="h-8 rounded-md border border-white/20 px-2 text-xs font-bold sm:h-10 sm:px-3 sm:text-sm"
+              onClick={() => setMermaidRenderVersion((version) => version + 1)}
+              type="button"
+            >
+              {t.rerenderMermaid}
+            </button>
+            <button
               className="col-span-4 hidden h-10 rounded-md bg-white px-3 text-sm font-bold text-ink sm:col-span-1 sm:block"
               onClick={toggleFullscreen}
               type="button"
@@ -232,7 +240,7 @@ export function PublicSlideshow({
                 <SlideContent
                   className="slide-content public-slide-content flex h-full flex-col justify-center p-2 pt-5 pb-5 sm:p-10 sm:pt-14 sm:pb-14 lg:p-14 lg:pt-16 lg:pb-16"
                   html={current.html}
-                  key={`${current.index}-${current.html}`}
+                  key={`${current.index}-${current.html}-${mermaidRenderVersion}`}
                 />
                 {settings.footer ? (
                   <div className="pointer-events-none absolute bottom-4 left-6 right-6 z-10 truncate text-sm font-semibold opacity-60 sm:left-10 sm:right-10 lg:left-14 lg:right-14">
